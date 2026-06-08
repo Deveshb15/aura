@@ -1,0 +1,103 @@
+import AppKit
+
+/// Which interactive region is currently live (drives both the hitTest
+/// click-through rect and the visible panel size).
+enum NotchInteractiveMode {
+    case collapsed
+    case expanded
+    case nudge
+}
+
+/// Computes the FIXED notch window frame plus the global-coordinate hover zones.
+/// The window never resizes — only the SwiftUI content animates — so there is
+/// no tracking-area thrash and therefore no hover flicker.
+struct NotchGeometry {
+    let screen: NSScreen
+    let hasNotch: Bool
+    let notchWidth: CGFloat
+    let notchHeight: CGFloat
+
+    // Fixed panel sizes (the window itself is a constant full-width strip).
+    static let windowHeight: CGFloat = 420
+    static let expandedWidth: CGFloat = 560
+    static let expandedHeight: CGFloat = 168
+    static let nudgeWidth: CGFloat = 340
+    static let nudgeHeight: CGFloat = 84
+
+    static func current() -> NotchGeometry {
+        let screen = notchedScreen() ?? NSScreen.main ?? NSScreen.screens.first!
+        let topInset = screen.safeAreaInsets.top
+        let hasNotch = topInset > 0
+        let height = hasNotch ? topInset : 32
+
+        var width: CGFloat = hasNotch ? 200 : 180
+        if hasNotch,
+           let left = screen.auxiliaryTopLeftArea,
+           let right = screen.auxiliaryTopRightArea {
+            width = max(120, screen.frame.width - left.width - right.width)
+        }
+
+        return NotchGeometry(screen: screen, hasNotch: hasNotch, notchWidth: width, notchHeight: height)
+    }
+
+    static func notchedScreen() -> NSScreen? {
+        NSScreen.screens.first { $0.safeAreaInsets.top > 0 }
+    }
+
+    /// Collapsed panel size (≈ the physical notch, or a small pill on non-notch displays).
+    var collapsedSize: CGSize {
+        CGSize(width: max(notchWidth, 180), height: notchHeight)
+    }
+
+    /// The FIXED window: full width of the notch screen × a constant tall strip,
+    /// pinned to the very top. Created once, never resized.
+    var windowFrame: NSRect {
+        NSRect(x: screen.frame.minX,
+               y: screen.frame.maxY - Self.windowHeight,
+               width: screen.frame.width,
+               height: Self.windowHeight)
+    }
+
+    /// Centered, top-pinned rect in GLOBAL screen coordinates.
+    private func globalRect(width: CGFloat, height: CGFloat) -> NSRect {
+        NSRect(x: screen.frame.midX - width / 2,
+               y: screen.frame.maxY - height,
+               width: width,
+               height: height)
+    }
+
+    /// Small OPEN-trigger zone: the physical notch + a little margin so it's easy to hit.
+    var notchRect: NSRect {
+        globalRect(width: max(notchWidth, 180) + 16, height: notchHeight + 8)
+    }
+
+    /// Large CLOSE zone: the expanded panel area (slightly padded for forgiveness).
+    /// Staying anywhere inside this keeps the panel open — the asymmetry vs
+    /// notchRect is what makes it stay open instead of flickering. The panel
+    /// content sits BELOW the physical notch, so the zone height includes the
+    /// notch inset.
+    var openedRect: NSRect {
+        globalRect(width: Self.expandedWidth + 24, height: notchHeight + Self.expandedHeight + 12)
+    }
+
+    /// Keep-alive zone for the nudge card (also offset below the notch).
+    var nudgeRect: NSRect {
+        globalRect(width: Self.nudgeWidth + 24, height: notchHeight + Self.nudgeHeight + 16)
+    }
+
+    /// The interactive rect in the container VIEW's coordinates (bottom-left
+    /// origin, pinned to the top of the window). Used for hitTest click-through.
+    func interactiveRect(for mode: NotchInteractiveMode) -> CGRect {
+        let size: CGSize
+        switch mode {
+        case .collapsed: size = CGSize(width: max(notchWidth, 180) + 16, height: notchHeight + 8)
+        case .expanded:  size = CGSize(width: Self.expandedWidth + 24, height: notchHeight + Self.expandedHeight + 12)
+        case .nudge:     size = CGSize(width: Self.nudgeWidth + 24, height: notchHeight + Self.nudgeHeight + 16)
+        }
+        let viewWidth = screen.frame.width
+        return CGRect(x: (viewWidth - size.width) / 2,
+                      y: Self.windowHeight - size.height,
+                      width: size.width,
+                      height: size.height)
+    }
+}

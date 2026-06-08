@@ -1,0 +1,72 @@
+import Foundation
+import AppKit
+import ImageIO
+import UniformTypeIdentifiers
+
+/// Copies captured originals (images, files) onto disk under
+/// `~/Library/Application Support/Aura/Assets/` and hands back a *relative*
+/// path that gets stored in the database.
+final class AssetStore {
+    let baseURL: URL
+
+    struct Stored {
+        var relativePath: String
+        var uti: String?
+        var byteSize: Int
+        var fileName: String
+    }
+
+    init() throws {
+        let support = try AppDatabase.supportDirectory()
+        baseURL = support.appendingPathComponent("Assets", isDirectory: true)
+        let fm = FileManager.default
+        try fm.createDirectory(at: baseURL.appendingPathComponent("img"), withIntermediateDirectories: true)
+        try fm.createDirectory(at: baseURL.appendingPathComponent("file"), withIntermediateDirectories: true)
+    }
+
+    func absoluteURL(for relativePath: String) -> URL {
+        baseURL.appendingPathComponent(relativePath)
+    }
+
+    /// Writes raw image bytes, preserving the original encoding/extension.
+    func storeImageData(_ data: Data) throws -> Stored {
+        let ext = Self.imageExtension(for: data) ?? "png"
+        let id = UUID().uuidString
+        let relative = "img/\(id).\(ext)"
+        try data.write(to: absoluteURL(for: relative), options: .atomic)
+        return Stored(relativePath: relative,
+                      uti: UTType(filenameExtension: ext)?.identifier,
+                      byteSize: data.count,
+                      fileName: "\(id).\(ext)")
+    }
+
+    /// Copies a dropped file in (never references the original, which may move/delete).
+    func storeFile(at url: URL) throws -> Stored {
+        let id = UUID().uuidString
+        let ext = url.pathExtension
+        let relative = ext.isEmpty ? "file/\(id)" : "file/\(id).\(ext)"
+        let dest = absoluteURL(for: relative)
+        try FileManager.default.copyItem(at: url, to: dest)
+        let size = (try? FileManager.default.attributesOfItem(atPath: dest.path)[.size] as? Int) ?? 0
+        return Stored(relativePath: relative,
+                      uti: UTType(filenameExtension: ext)?.identifier,
+                      byteSize: size,
+                      fileName: url.lastPathComponent)
+    }
+
+    func removeAsset(relativePath: String) {
+        try? FileManager.default.removeItem(at: absoluteURL(for: relativePath))
+    }
+
+    /// Detects the preferred file extension for raw image data via ImageIO.
+    static func imageExtension(for data: Data) -> String? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let uti = CGImageSourceGetType(source) else { return nil }
+        return UTType(uti as String)?.preferredFilenameExtension
+    }
+
+    static func isImageFile(_ url: URL) -> Bool {
+        guard let type = UTType(filenameExtension: url.pathExtension) else { return false }
+        return type.conforms(to: .image)
+    }
+}
