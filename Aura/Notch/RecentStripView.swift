@@ -61,8 +61,8 @@ struct NotchMiniCard: View {
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.07)))
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             .contentShape(Rectangle())
-            .onTapGesture { dataStore.copyToClipboard(item) }
-            .help("Click to copy")
+            .onTapGesture { dataStore.primaryAction(item) }
+            .help(item.canOpen ? "Click to open" : "Click to copy")
     }
 
     @ViewBuilder private var content: some View {
@@ -82,7 +82,11 @@ struct NotchMiniCard: View {
         case .color:
             Color(hex: item.colorHex ?? "") ?? Color.gray
         case .file:
-            centeredIcon("doc.fill", caption: item.fileName ?? "File")
+            if let data = item.thumbnail, let image = NSImage(data: data) {
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+            } else {
+                centeredIcon("doc.fill", caption: item.fileName ?? "File")
+            }
         case .text:
             Text(item.textContent ?? "")
                 .font(.system(size: 10))

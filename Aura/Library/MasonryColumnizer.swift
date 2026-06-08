@@ -33,6 +33,9 @@ enum MasonryColumnizer {
         case .color:
             return 168
         case .file:
+            if let w = item.thumbWidth, let h = item.thumbHeight, w > 0 {
+                return columnWidth * CGFloat(h) / CGFloat(w) + 52
+            }
             return 150
         case .text:
             let length = item.textContent?.count ?? 0

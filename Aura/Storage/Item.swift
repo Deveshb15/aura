@@ -60,6 +60,15 @@ extension Item {
     var itemType: ItemType { ItemType(rawValue: type) ?? .text }
     var subtype: URLSubtype { URLSubtype(rawValue: urlSubtype ?? "") ?? .generic }
 
+    /// Whether a primary click can "open" this item (vs. just copy it).
+    var canOpen: Bool {
+        switch itemType {
+        case .url: return URL(string: textContent ?? "") != nil
+        case .file, .image: return assetPath != nil
+        case .text, .color: return false
+        }
+    }
+
     /// Combined haystack for simple in-memory search (FTS5 used for the real search later).
     var searchText: String {
         [title, textContent, host, fileName, ogTitle, ogDescription]

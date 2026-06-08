@@ -26,7 +26,7 @@ final class DataStore {
         self.dbPool = dbPool
         self.assetStore = assetStore
         startObserving()
-        Task { [weak self] in await self?.backfillLinks() }
+        Task { [weak self] in await self?.backfillPending() }
     }
 
     private func startObserving() {
@@ -96,8 +96,10 @@ final class DataStore {
             try await dbPool.write { [item] db in
                 try item.insert(db)
             }
-            if item.itemType == .url {
-                Task { [weak self] in await self?.enrichLink(item) }
+            switch item.itemType {
+            case .url: Task { [weak self] in await self?.enrichLink(item) }
+            case .file: Task { [weak self] in await self?.enrichFile(item) }
+            default: break
             }
         } catch {
             NSLog("Aura: save failed: \(error)")
@@ -140,17 +142,43 @@ final class DataStore {
         try? await dbPool.write { db in try toSave.update(db) }
     }
 
-    /// Enriches any previously-saved links that were never enriched.
-    private func backfillLinks() async {
+    /// Generates a Quick Look thumbnail for a saved (non-image) file and stores
+    /// it inline so the card upgrades from a generic icon to a real preview.
+    func enrichFile(_ item: Item) async {
+        guard item.itemType == .file, let path = item.assetPath else { return }
+        let url = assetStore.absoluteURL(for: path)
+
+        var updated = item
+        if let thumb = await FileThumbnailService.make(forFileURL: url) {
+            updated.thumbnail = thumb.data
+            updated.thumbWidth = thumb.width
+            updated.thumbHeight = thumb.height
+        }
+        // ogTitle is unused for files — use it as a "processed" marker so the
+        // backfill doesn't retry files that have no Quick Look thumbnail.
+        updated.ogTitle = item.fileName ?? item.title ?? "file"
+        updated.updatedAt = Date()
+
+        let toSave = updated
+        try? await dbPool.write { db in try toSave.update(db) }
+    }
+
+    /// Enriches any previously-saved links or files that were never processed.
+    private func backfillPending() async {
         let pending: [Item] = (try? await dbPool.read { db in
             try Item
-                .filter(Column("type") == ItemType.url.rawValue && Column("ogTitle") == nil)
+                .filter([ItemType.url.rawValue, ItemType.file.rawValue].contains(Column("type"))
+                        && Column("ogTitle") == nil)
                 .order(Column("createdAt").desc)
-                .limit(30)
+                .limit(40)
                 .fetchAll(db)
         }) ?? []
         for item in pending {
-            await enrichLink(item)
+            switch item.itemType {
+            case .url: await enrichLink(item)
+            case .file: await enrichFile(item)
+            default: break
+            }
         }
     }
 
@@ -192,6 +220,32 @@ final class DataStore {
             pasteboard.setString(item.textContent ?? item.title ?? "", forType: .string)
         }
         onSelfCopy?(pasteboard.changeCount)
+    }
+
+    /// What a primary click does: open links/files/images in their default
+    /// app or browser; text & colors have nothing to open, so they copy.
+    func primaryAction(_ item: Item) {
+        open(item)
+    }
+
+    func open(_ item: Item) {
+        switch item.itemType {
+        case .url:
+            if let url = item.textContent.flatMap({ URL(string: $0) }) {
+                NSWorkspace.shared.open(url)
+            }
+        case .file, .image:
+            if let url = assetURL(for: item) {
+                NSWorkspace.shared.open(url)
+            }
+        case .text, .color:
+            copyToClipboard(item)
+        }
+    }
+
+    func revealInFinder(_ item: Item) {
+        guard let url = assetURL(for: item) else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     func delete(_ item: Item) {
