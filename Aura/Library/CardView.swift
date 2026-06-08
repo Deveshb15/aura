@@ -27,7 +27,10 @@ struct CardView: View {
 
     @ViewBuilder private var cardContent: some View {
         switch item.itemType {
-        case .url: URLCardView(item: item)
+        case .url:
+            URLCardView(item: item,
+                        heroURL: store.fileURL(forRelativePath: item.ogImagePath),
+                        faviconURL: store.fileURL(forRelativePath: item.faviconPath))
         case .image: ImageCardView(item: item, assetURL: store.assetURL(for: item))
         case .color: ColorCardView(item: item)
         case .file: FileCardView(item: item)

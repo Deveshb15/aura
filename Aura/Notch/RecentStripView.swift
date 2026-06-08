@@ -74,7 +74,11 @@ struct NotchMiniCard: View {
                 centeredIcon("photo", caption: nil)
             }
         case .url:
-            centeredIcon(urlIcon, caption: item.host ?? "Link")
+            if let image = DiskImage.load(dataStore.fileURL(forRelativePath: item.ogImagePath)) {
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
+            } else {
+                centeredIcon(urlIcon, caption: item.host ?? "Link")
+            }
         case .color:
             Color(hex: item.colorHex ?? "") ?? Color.gray
         case .file:

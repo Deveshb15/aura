@@ -21,10 +21,7 @@ struct ImageCardView: View {
         if let data = item.thumbnail, let image = NSImage(data: data) {
             return image
         }
-        if let assetURL {
-            return NSImage(contentsOf: assetURL)
-        }
-        return nil
+        return DiskImage.load(assetURL)
     }
 
     private var placeholder: some View {

@@ -20,8 +20,9 @@ final class AssetStore {
         let support = try AppDatabase.supportDirectory()
         baseURL = support.appendingPathComponent("Assets", isDirectory: true)
         let fm = FileManager.default
-        try fm.createDirectory(at: baseURL.appendingPathComponent("img"), withIntermediateDirectories: true)
-        try fm.createDirectory(at: baseURL.appendingPathComponent("file"), withIntermediateDirectories: true)
+        for subdir in ["img", "file", "og", "favicon"] {
+            try fm.createDirectory(at: baseURL.appendingPathComponent(subdir), withIntermediateDirectories: true)
+        }
     }
 
     func absoluteURL(for relativePath: String) -> URL {
@@ -33,6 +34,18 @@ final class AssetStore {
         let ext = Self.imageExtension(for: data) ?? "png"
         let id = UUID().uuidString
         let relative = "img/\(id).\(ext)"
+        try data.write(to: absoluteURL(for: relative), options: .atomic)
+        return Stored(relativePath: relative,
+                      uti: UTType(filenameExtension: ext)?.identifier,
+                      byteSize: data.count,
+                      fileName: "\(id).\(ext)")
+    }
+
+    /// Writes image bytes into a named subdirectory (e.g. "og", "favicon").
+    func storeImage(_ data: Data, subdir: String) throws -> Stored {
+        let ext = Self.imageExtension(for: data) ?? "png"
+        let id = UUID().uuidString
+        let relative = "\(subdir)/\(id).\(ext)"
         try data.write(to: absoluteURL(for: relative), options: .atomic)
         return Stored(relativePath: relative,
                       uti: UTType(filenameExtension: ext)?.identifier,

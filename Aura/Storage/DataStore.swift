@@ -26,6 +26,7 @@ final class DataStore {
         self.dbPool = dbPool
         self.assetStore = assetStore
         startObserving()
+        Task { [weak self] in await self?.backfillLinks() }
     }
 
     private func startObserving() {
@@ -95,9 +96,68 @@ final class DataStore {
             try await dbPool.write { [item] db in
                 try item.insert(db)
             }
+            if item.itemType == .url {
+                Task { [weak self] in await self?.enrichLink(item) }
+            }
         } catch {
             NSLog("Aura: save failed: \(error)")
         }
+    }
+
+    // MARK: - Rich link previews
+
+    /// Fetches Open Graph / YouTube metadata for a saved URL and updates the row
+    /// in place (the card upgrades live via ValueObservation). Runs after the
+    /// item is already saved, so the network fetch never blocks the save.
+    func enrichLink(_ item: Item) async {
+        guard item.itemType == .url,
+              let urlString = item.textContent,
+              let url = URL(string: urlString) else { return }
+
+        let meta = await LinkMetadataService.fetch(url: url)
+
+        var updated = item
+        if let imageData = meta.imageData {
+            // Downsample the hero image so cards stay light.
+            let toStore = ThumbnailService.make(fromImageData: imageData)?.data ?? imageData
+            if let stored = try? assetStore.storeImage(toStore, subdir: "og") {
+                updated.ogImagePath = stored.relativePath
+            }
+        }
+        if let iconData = meta.iconData,
+           let stored = try? assetStore.storeImage(iconData, subdir: "favicon") {
+            updated.faviconPath = stored.relativePath
+        }
+        if let description = meta.description { updated.ogDescription = description }
+        // Always set ogTitle (falling back to host) so this item is marked
+        // enriched and the backfill won't keep re-fetching it.
+        let resolvedTitle = meta.title ?? updated.host ?? urlString
+        updated.ogTitle = resolvedTitle
+        updated.title = resolvedTitle
+        updated.updatedAt = Date()
+
+        let toSave = updated
+        try? await dbPool.write { db in try toSave.update(db) }
+    }
+
+    /// Enriches any previously-saved links that were never enriched.
+    private func backfillLinks() async {
+        let pending: [Item] = (try? await dbPool.read { db in
+            try Item
+                .filter(Column("type") == ItemType.url.rawValue && Column("ogTitle") == nil)
+                .order(Column("createdAt").desc)
+                .limit(30)
+                .fetchAll(db)
+        }) ?? []
+        for item in pending {
+            await enrichLink(item)
+        }
+    }
+
+    /// Resolves a stored relative asset path (og image, favicon, …) to a URL.
+    func fileURL(forRelativePath path: String?) -> URL? {
+        guard let path else { return nil }
+        return assetStore.absoluteURL(for: path)
     }
 
     private func populateImage(_ item: inout Item, data: Data, originalName: String? = nil) {

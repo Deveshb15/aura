@@ -28,6 +28,12 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Aura — local capture vault</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Link previews fetch images/favicons from arbitrary sites, some over http. -->
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 	<key>NSSupportsAutomaticTermination</key>
