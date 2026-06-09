@@ -5,9 +5,16 @@ import SwiftUI
 struct NotchExpandedView: View {
     let dataStore: DataStore
     let isDropTargeted: Bool
+    let pending: NudgeItem?
+    let onKeepPending: () -> Void
+    let onDismissPending: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            if let pending {
+                KeepChipView(item: pending, onKeep: onKeepPending, onDismiss: onDismissPending)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
             HStack {
                 Label("Aura", systemImage: "tray.full.fill")
                     .font(.system(size: 11, weight: .semibold))

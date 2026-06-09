@@ -11,12 +11,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
 
         let controller = NotchController(state: NotchStateModel(), dataStore: env.dataStore)
+        let launcher = env.libraryLauncher
+        controller.onOpenLibrary = { launcher.open?() }
         controller.show()
         notchController = controller
 
         let watcher = env.clipboardWatcher
         watcher.onCandidate = { [weak controller] candidate in
-            controller?.showNudge(candidate)
+            controller?.handleCopy(candidate)
         }
         env.dataStore.onSelfCopy = { [weak watcher] changeCount in
             watcher?.ignore(changeCount: changeCount)

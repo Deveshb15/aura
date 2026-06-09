@@ -5,7 +5,6 @@ import AppKit
 enum NotchInteractiveMode {
     case collapsed
     case expanded
-    case nudge
 }
 
 /// Computes the FIXED notch window frame plus the global-coordinate hover zones.
@@ -21,8 +20,8 @@ struct NotchGeometry {
     static let windowHeight: CGFloat = 420
     static let expandedWidth: CGFloat = 560
     static let expandedHeight: CGFloat = 168
-    static let nudgeWidth: CGFloat = 340
-    static let nudgeHeight: CGFloat = 84
+    /// Extra height the expanded panel takes when the "keep" chip is shown.
+    static let chipAllowance: CGFloat = 62
 
     static func current() -> NotchGeometry {
         let screen = notchedScreen() ?? NSScreen.main ?? NSScreen.screens.first!
@@ -66,9 +65,11 @@ struct NotchGeometry {
                height: height)
     }
 
-    /// Small OPEN-trigger zone: the physical notch + a little margin so it's easy to hit.
+    /// OPEN-trigger zone: hugs the physical notch (a little wider for an easy
+    /// horizontal target, but only a hair taller, so it does NOT reach down into
+    /// a browser's tab bar / new-tab button below the notch). Monitor-based.
     var notchRect: NSRect {
-        globalRect(width: max(notchWidth, 180) + 16, height: notchHeight + 8)
+        globalRect(width: max(notchWidth, 180) + 30, height: notchHeight + 10)
     }
 
     /// Large CLOSE zone: the expanded panel area (slightly padded for forgiveness).
@@ -76,13 +77,11 @@ struct NotchGeometry {
     /// notchRect is what makes it stay open instead of flickering. The panel
     /// content sits BELOW the physical notch, so the zone height includes the
     /// notch inset.
+    /// Tall enough to also cover the optional "keep" chip at the top of the
+    /// expanded panel, so hovering the chip never falls outside the close zone.
     var openedRect: NSRect {
-        globalRect(width: Self.expandedWidth + 24, height: notchHeight + Self.expandedHeight + 12)
-    }
-
-    /// Keep-alive zone for the nudge card (also offset below the notch).
-    var nudgeRect: NSRect {
-        globalRect(width: Self.nudgeWidth + 24, height: notchHeight + Self.nudgeHeight + 16)
+        globalRect(width: Self.expandedWidth + 24,
+                   height: notchHeight + Self.expandedHeight + Self.chipAllowance + 12)
     }
 
     /// The interactive rect in the container VIEW's coordinates (bottom-left
@@ -90,9 +89,11 @@ struct NotchGeometry {
     func interactiveRect(for mode: NotchInteractiveMode) -> CGRect {
         let size: CGSize
         switch mode {
-        case .collapsed: size = CGSize(width: max(notchWidth, 180) + 16, height: notchHeight + 8)
-        case .expanded:  size = CGSize(width: Self.expandedWidth + 24, height: notchHeight + Self.expandedHeight + 12)
-        case .nudge:     size = CGSize(width: Self.nudgeWidth + 24, height: notchHeight + Self.nudgeHeight + 16)
+        case .collapsed:
+            size = CGSize(width: max(notchWidth, 180) + 16, height: notchHeight + 8)
+        case .expanded:
+            size = CGSize(width: Self.expandedWidth + 24,
+                          height: notchHeight + Self.expandedHeight + Self.chipAllowance + 12)
         }
         let viewWidth = screen.frame.width
         return CGRect(x: (viewWidth - size.width) / 2,

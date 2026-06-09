@@ -71,6 +71,16 @@ final class AssetStore {
         try? FileManager.default.removeItem(at: absoluteURL(for: relativePath))
     }
 
+    /// Wipes every stored asset (used by "Clear All Data").
+    func removeAllAssets() {
+        let fm = FileManager.default
+        for subdir in ["img", "file", "og", "favicon"] {
+            let dir = baseURL.appendingPathComponent(subdir)
+            try? fm.removeItem(at: dir)
+            try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
+        }
+    }
+
     /// Detects the preferred file extension for raw image data via ImageIO.
     static func imageExtension(for data: Data) -> String? {
         guard let source = CGImageSourceCreateWithData(data as CFData, nil),

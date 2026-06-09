@@ -15,6 +15,9 @@ struct MenuBarContent: View {
 
         Divider()
 
+        SettingsLink { Text("Settings…") }
+            .keyboardShortcut(",")
+
         Button("Quit Aura") {
             NSApp.terminate(nil)
         }

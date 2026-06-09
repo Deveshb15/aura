@@ -12,15 +12,21 @@ final class NotchStateModel {
     }
 
     var mode: Mode = .collapsed
-    var nudge: NudgeItem?
     var isDropTargeted = false
+
+    /// A just-copied item awaiting "keep" — shown as a chip only when the user
+    /// hovers the notch (it is NOT auto-popped as a card). Expires if ignored.
+    var pending: NudgeItem?
+
+    /// Incremented on every copy to fire the one-shot elastic bounce animation.
+    var bounceTrigger: Int = 0
 
     /// The collapsed panel size (≈ the physical notch), kept in sync by the
     /// controller so the SwiftUI panel can size itself reactively.
     var collapsedSize: CGSize = CGSize(width: 200, height: 32)
 }
 
-/// A clipboard nudge waiting to be kept or ignored.
+/// A clipboard capture awaiting "keep".
 struct NudgeItem: Identifiable {
     let id = UUID()
     let candidate: CaptureCandidate

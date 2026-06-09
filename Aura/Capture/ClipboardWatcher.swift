@@ -49,6 +49,10 @@ final class ClipboardWatcher {
             return
         }
 
+        // Respect the "watch clipboard" setting (we still advanced lastChangeCount
+        // above, so re-enabling won't nudge a stale copy).
+        guard UserDefaults.standard.object(forKey: "captureEnabled") as? Bool ?? true else { return }
+
         guard let candidate = PasteboardReader.read(pasteboard) else { return }
         onCandidate?(candidate)
     }

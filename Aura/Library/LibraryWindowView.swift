@@ -5,6 +5,7 @@ struct LibraryWindowView: View {
     @Environment(DataStore.self) private var store
     @State private var query = ""
     @State private var selectedTab: CategoryTab = .all
+    @State private var searchResults: [Item] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,6 +26,13 @@ struct LibraryWindowView: View {
             if case .collection(let id) = selectedTab, !collections.contains(where: { $0.id == id }) {
                 selectedTab = .all
             }
+        }
+        .task(id: query) {
+            let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { searchResults = []; return }
+            try? await Task.sleep(nanoseconds: 200_000_000) // debounce
+            guard !Task.isCancelled else { return }
+            searchResults = await store.search(trimmed)
         }
     }
 
@@ -76,9 +84,8 @@ struct LibraryWindowView: View {
     }
 
     private var filteredItems: [Item] {
-        store.libraryItems.filter { item in
-            tabMatches(item) &&
-            (query.isEmpty || item.searchText.localizedCaseInsensitiveContains(query))
-        }
+        let searching = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let base = searching ? searchResults : store.libraryItems
+        return base.filter(tabMatches)
     }
 }

@@ -160,6 +160,8 @@ final class DataStore {
     /// in place (the card upgrades live via ValueObservation). Runs after the
     /// item is already saved, so the network fetch never blocks the save.
     func enrichLink(_ item: Item) async {
+        // Respect the "fetch link previews" setting (the only networked feature).
+        guard UserDefaults.standard.object(forKey: "linkPreviewsEnabled") as? Bool ?? true else { return }
         guard item.itemType == .url,
               let urlString = item.textContent,
               let url = URL(string: urlString) else { return }
@@ -234,6 +236,41 @@ final class DataStore {
     func fileURL(forRelativePath path: String?) -> URL? {
         guard let path else { return nil }
         return assetStore.absoluteURL(for: path)
+    }
+
+    // MARK: - Search
+
+    /// Full-text search over the FTS5 index (title / text / link metadata /
+    /// filename), prefix-matched and ordered by relevance. Empty query returns
+    /// the current library.
+    func search(_ query: String) async -> [Item] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return libraryItems }
+        let results: [Item]? = try? await dbPool.read { db in
+            guard let pattern = FTS5Pattern(matchingAllPrefixesIn: trimmed) else { return [] }
+            return try Item.fetchAll(db, sql: """
+                SELECT item.* FROM item
+                JOIN item_fts ON item_fts.rowid = item.rowid
+                WHERE item_fts MATCH ?
+                ORDER BY rank
+                """, arguments: [pattern])
+        }
+        return results ?? []
+    }
+
+    // MARK: - Bulk
+
+    /// Deletes every saved item and its on-disk assets (collections are kept).
+    func deleteAllItems() {
+        let assetStore = self.assetStore
+        Task {
+            do {
+                try await dbPool.write { db in _ = try Item.deleteAll(db) }
+                assetStore.removeAllAssets()
+            } catch {
+                NSLog("Aura: clear-all failed: \(error)")
+            }
+        }
     }
 
     private func populateImage(_ item: inout Item, data: Data, originalName: String? = nil) {
