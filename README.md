@@ -1,162 +1,139 @@
 <div align="center">
 
+<img src="docs/icon.png" width="120" alt="Aura" />
+
 # Aura
 
-**Drop anything into your Mac's notch.**
+**Copy anything. It lands in your notch. Find it forever.**
 
-A native macOS menu-bar app that turns the notch into a place to dump everything —
-copied text, links, images, files — and browse it all later in a beautiful card grid.
-100% local. No account, no cloud, no telemetry.
+A tiny menu-bar app that turns your Mac's notch into a capture vault. Copy or drag in a
+link, a paragraph, an image, a file, a color — Aura quietly catches it with a soft nudge,
+and it all lands in a beautiful, searchable library. 100% local. ✨
 
-`macOS 14+` · `Swift` · `SwiftUI + AppKit` · `GRDB / SQLite` · `local-only`
+[**↓ Download for macOS**](https://github.com/Deveshb15/aura/releases/latest) &nbsp;·&nbsp; macOS 14+ &nbsp;·&nbsp; Apple Silicon &amp; Intel
+
+<br/>
+
+<img src="docs/library.png" width="860" alt="The Aura library — a dark serif bento grid of saved videos, links, text and images under an 'Ask your Memory…' search field" />
 
 </div>
 
----
+<br/>
 
 ## What it is
 
-Aura lives in the MacBook notch (inspired by [Supaste](https://www.supaste.com)). It has two surfaces:
+Aura lives in your Mac's notch (or a small pill, if your Mac has no notch). Copy
+something — a link, a snippet, an image, a hex color — and the notch gives a soft
+rubber-band **nudge**. Hover to keep it; ignore it and it slips away. You can also
+drag files and links straight onto the notch, and drag saved items back out.
 
-1. **The notch** — hover to expand a panel. **Drag-and-drop** files, images, or links onto it to save them. When you **copy** something, a small card *nudges* out of the notch — click it to keep, ignore it and it slips away. A strip of recently-saved items lives here for quick access.
-2. **The library window** — everything you've saved, in a **bento / masonry** card grid: images show previews, links show host + icon, text shows snippets, colors show swatches, files show their type. Search and category tabs on top.
+Everything you keep lands in the **library**: a dark, serif bento grid you can search
+(*"Ask your Memory…"*) and filter by type. It's a calm little home for the things you'd
+otherwise lose in a sea of tabs and screenshots — and it never leaves your Mac.
 
-Everything is stored **on your device only**, in a local SQLite database.
+<br/>
 
-## Features
+## Catch it in the notch
 
-- **Notch-resident UI** — a borderless panel that floats over every Space and fullscreen app, never steals focus, and merges visually with the physical notch.
-- **Nudge-to-save clipboard capture** — nothing is saved unless you act on the nudge. Password-manager and transient clipboard content (`org.nspasteboard.ConcealedType` / `TransientType`) is ignored.
-- **Drag-and-drop** — drop files, images, web links, or text straight onto the notch.
-- **Bento library** — a column-balancing masonry grid with per-type cards and substring search.
-- **Local-first & private** — SQLite + on-disk assets under Application Support; no network calls, no sandbox phone-home, nothing leaves the machine.
-- **Vault-only retrieval** — click any item to copy it back to the clipboard, or drag it out. (No paste-injection, so no Accessibility permission needed.)
-- **Smooth, flicker-free notch hover** — see [Design notes](#design-notes).
+<div align="center">
+<img src="docs/shot-nudge.png" width="560" alt="A copied link nudging out of the notch with a 'keep' button" />
+</div>
 
-## How it works
+Copy or drag something in, and the notch nudges down like stretched rubber. A little chip
+offers to **keep** it — so nothing is saved unless you say so. Password-manager and
+transient clipboard content is ignored automatically. Press **⌥⌘V** anytime to summon the
+library from anywhere.
+
+<br/>
+
+## Install
+
+<table>
+<tr>
+<td width="46%" valign="middle">
+<img src="docs/dmg.png" alt="The Aura disk image: a dark 'drag to Applications' screen" />
+</td>
+<td width="54%" valign="top">
+
+1. Download **`Aura.dmg`** from [**Releases**](https://github.com/Deveshb15/aura/releases/latest).
+2. Open it and drag **Aura** into your **Applications** folder.
+3. Launch it — Aura lives in the **menu bar / notch** (no Dock icon).
+
+Signed with a Developer ID and **notarized by Apple**, so it opens with no Gatekeeper
+warnings. Requires **macOS 14** or later.
+
+</td>
+</tr>
+</table>
+
+<br/>
+
+## How it works (and your privacy)
+
+- **Capture** watches the clipboard a few times a second (and backs off on battery). Nothing
+  is saved until you keep it; password-manager / transient clipboard content
+  (`org.nspasteboard.ConcealedType` / `TransientType`) is skipped.
+- **One store, two surfaces.** A single reactive `DataStore` (GRDB / SQLite, with FTS5 search)
+  backs both the notch and the library — keep something in the notch and it appears in the
+  library instantly.
+- **Originals** live on disk under `~/Library/Application Support/Aura/`; only small thumbnails
+  are cached inline for a fast grid.
+- **Retrieval needs no special permissions** — click an item to copy it back, or drag it out to
+  any app. No paste-injection, so no Accessibility prompt.
+- **It stays on your Mac.** No analytics, no account, no sync. The only network calls fetch
+  link-preview images and favicons from the sites you actually save. Delete the Application
+  Support folder to reset everything.
+
+<br/>
+
+## Build from source
+
+Requires macOS 14+, Xcode 16+, and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
+(`brew install xcodegen`).
+
+```sh
+xcodegen generate          # regenerate Aura.xcodeproj from project.yml
+xcodebuild -project Aura.xcodeproj -scheme Aura -configuration Debug build
+```
+
+Or `open Aura.xcodeproj` and hit ⌘R. The only dependency is GRDB (via SwiftPM), and the
+"Awesome Serif" display face is bundled under `Aura/Fonts/`.
+
+A signed + notarized release DMG (with the dark "drag to Applications" art, rendered by
+`Tools/DMGBackground.swift`) is one command:
+
+```sh
+NOTARY_PROFILE=<your-notarytool-profile> ./scripts/release.sh
+```
+
+<br/>
+
+## Project layout
 
 ```
-                 ┌──────────────────────────────────────────────┐
-   clipboard ───▶│ ClipboardWatcher ─┐                           │
-   (poll 250ms)  │                   │                           │
-                 │ drag & drop ──────┼─▶ CaptureCandidate        │
-                 │ (DropReceiver)    │        │                  │
-                 │                   │        ▼                  │
-                 │            DataStore.save() ──▶ AssetStore     │
-                 │                   │        │   (originals)    │
-                 │                   │        ▼                  │
-                 │                   │   GRDB / SQLite + FTS5     │
-                 │                   │        │                  │
-                 │          ValueObservation (reactive)          │
-                 │                   │                           │
-                 │       ┌───────────┴───────────┐               │
-                 │       ▼                       ▼               │
-                 │  Notch panel            Library window        │
-                 │  (recent strip)         (bento grid)          │
-                 └──────────────────────────────────────────────┘
-```
-
-A single `@Observable` **`DataStore`** wraps a GRDB `DatabasePool` and is shared by **both** surfaces, so a save in the notch shows up in the library window instantly (and vice-versa). Both clipboard-nudge "keep" and drag-drop funnel through one `save()` path.
-
-### Design notes
-
-**Flicker-free notch hover.** The hard part of a notch app is making hover-to-expand smooth. The trick (borrowed from [NotchDrop](https://github.com/Lakr233/NotchDrop)):
-
-- The window is a **fixed-size, full-width strip** that **never resizes** — only the SwiftUI content animates inside it. (Resizing the window mid-hover is what causes the classic open/close flicker.)
-- Hover is detected by a **global + local `.mouseMoved` monitor** reading `NSEvent.mouseLocation` — **no `NSTrackingArea`**, so there's nothing to rebuild during animation.
-- **Asymmetric zones**: it opens when the cursor enters the small notch rect, and only closes when the cursor leaves the *large* expanded-panel rect. That asymmetry (+ a short open dwell and close debounce) is what makes it open instantly and *stay* open.
-- Click-through everywhere except the visible panel is handled by a `hitTest` override, so the rest of the menu bar stays usable.
-
-## Tech stack
-
-| Concern | Choice |
-|---|---|
-| Language / UI | Swift, SwiftUI + AppKit (`NSPanel` + `NSHostingView` for the notch) |
-| Storage | [GRDB.swift](https://github.com/groue/GRDB.swift) (SQLite) with FTS5 full-text search |
-| Project generation | [XcodeGen](https://github.com/yonaskolb/XcodeGen) — the `.xcodeproj` is generated from `project.yml` |
-| Min OS | macOS 14.0 (Sonoma) — for `safeAreaInsets` / `auxiliaryTopLeftArea`, `@Observable`, `MenuBarExtra` |
-| Sandbox | **None** (personal/local use — full clipboard, custom window levels, filesystem) |
-
-## Project structure
-
-```
+project.yml                  XcodeGen spec (source of truth; .xcodeproj is generated)
+Tools/                       DMGBackground.swift (reproducible disk-image art)
+scripts/release.sh           build → Developer ID sign → notarize → staple → DMG
 Aura/
-├── AuraApp.swift              # @main: MenuBarExtra + Library Window + Settings
-├── Info.plist / Aura.entitlements
-├── App/                       # AppDelegate, AppEnvironment (DI), MenuBarContent
-├── Notch/                     # the notch panel
-│   ├── NotchController        # window lifecycle + hover state machine
-│   ├── NotchPanel             # borderless non-activating NSPanel
-│   ├── NotchContainerView     # hitTest click-through
-│   ├── NotchRootView          # SwiftUI content (collapsed / expanded / nudge)
-│   ├── NotchGeometry          # fixed window frame + hover zones
-│   ├── NudgeCardView / RecentStripView / NotchShape / NotchStateModel
-├── Capture/                   # ClipboardWatcher, PasteboardReader, DropReceiver, CaptureCandidate
-├── Storage/                   # AppDatabase (schema), DataStore, Item, Collection, AssetStore, ThumbnailService
-├── Library/                   # LibraryWindowView, BentoGridView, MasonryColumnizer, CardView, Cards/*
-└── Shared/                    # URLClassifier, ColorDetector, Color+Hex
-project.yml                    # XcodeGen spec (GRDB dependency, signing, entitlements)
+  App/                       @main app, AppDelegate, MenuBarContent, GlobalHotKey, FontRegistrar
+  Capture/                   ClipboardWatcher, PasteboardReader, DropReceiver, CaptureCandidate
+  Notch/                     NotchController + panel, hover state machine, rubber-band nudge
+  Library/                   LibraryWindowView, ContentTypeTabBar, BentoGridView, CardView, Cards/, AuraTheme
+  Storage/                   AppDatabase (schema), DataStore, Item, AssetStore, ThumbnailService
+  Settings/                  SettingsView
+  Shared/                    URLClassifier, ColorDetector, LinkMetadataService, Color+Hex
+  Fonts/                     Awesome Serif
+  Assets.xcassets            AppIcon
 ```
 
-## Getting started
-
-### Requirements
-
-- macOS 14.0+ (built and tested on macOS 15, Xcode 26, Apple Silicon)
-- [XcodeGen](https://github.com/yonaskolb/XcodeGen) — `brew install xcodegen`
-
-### Build & run
-
-```bash
-git clone git@github.com:Deveshb15/aura.git
-cd aura
-
-# Generate the Xcode project from project.yml (run again after adding/removing files)
-xcodegen generate
-
-# Open in Xcode and press ⌘R
-open Aura.xcodeproj
-
-# …or build & launch from the command line
-xcodebuild -project Aura.xcodeproj -scheme Aura -configuration Debug \
-  -destination 'platform=macOS' -derivedDataPath build build
-open build/Build/Products/Debug/Aura.app
-```
-
-Because `LSUIElement` is set, **no window opens on launch** — look for the **tray icon** in the menu bar and the panel in the **notch**. Hover the notch to expand it; open the library from the tray icon → **Open Library**.
-
-> The generated `Aura.xcodeproj` is intentionally **git-ignored** — regenerate it with `xcodegen generate` after cloning.
-
-## Data & privacy
-
-Everything lives locally under:
-
-```
-~/Library/Application Support/Aura/
-├── aura.sqlite          # item metadata, thumbnails, and the FTS5 search index
-└── Assets/
-    ├── img/             # original images
-    └── file/            # saved files
-```
-
-No data ever leaves your machine. Aura makes no network requests, has no analytics, and is not sandboxed (so it can monitor the clipboard and position a window over the notch). Delete that folder to reset the app completely.
-
-## Roadmap
-
-- [x] **Phase 1** — notch capture (nudge + drag-drop) → SQLite → notch recent strip + bento library, for text/links/images
-- [x] **Notch polish** — flicker-free hover, content positioned below the physical notch
-- [ ] **Phase 3** — rich link previews (LinkPresentation + Open Graph meta images & favicons)
-- [ ] **Phase 4** — YouTube thumbnails, Quick Look thumbnails for arbitrary files
-- [ ] **Phase 5** — color-swatch cards, user collections
-- [ ] **Phase 6** — FTS5 search bar, settings (capture toggle, launch-at-login)
-- [ ] **Phase 7** — animation choreography, multi-display handling, battery-aware polling
-
-## Development notes
-
-- The project file is generated — **never edit `Aura.xcodeproj` by hand**; change `project.yml` and re-run `xcodegen generate`.
-- GRDB is the only third-party dependency, added via Swift Package Manager inside `project.yml`.
-- The app ad-hoc signs to run locally; there's no provisioning profile and App Sandbox is off by design.
+<br/>
 
 ## License
 
-Personal project — © 2026 Devesh. All rights reserved.
+[MIT](LICENSE) © 2026 Devesh Bhimanpelli. Free to use, modify, and share — just keep the copyright notice.
+
+<br/>
+
+<div align="center">
+A calm home for everything you capture. 🪶
+</div>

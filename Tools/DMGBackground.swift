@@ -61,14 +61,11 @@ struct DMGBackgroundArt: View {
                            center: UnitPoint(x: 0.5, y: 0.0),
                            startRadius: 0, endRadius: W * 0.5)
 
-            // Wordmark — "Capture Aura" + the pink accent dot, mirroring the app header.
-            HStack(alignment: .top, spacing: 3) {
-                Text("Capture Aura")
-                    .font(.custom("AwesomeSerif-MediumRegular", size: 30))
-                    .foregroundStyle(c(textPrimary))
-                Circle().fill(c(accentRose)).frame(width: 7, height: 7).padding(.top, 5)
-            }
-            .position(x: W / 2, y: 58)
+            // Wordmark — "Capture Aura", mirroring the app header.
+            Text("Capture Aura")
+                .font(.custom("AwesomeSerif-MediumRegular", size: 30))
+                .foregroundStyle(c(textPrimary))
+                .position(x: W / 2, y: 58)
 
             Text("your captures, one drag from home")
                 .font(.system(size: 13.5, weight: .regular, design: .default))

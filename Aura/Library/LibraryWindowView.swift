@@ -42,16 +42,10 @@ struct LibraryWindowView: View {
     // MARK: - Header
 
     private var wordmark: some View {
-        HStack(alignment: .top, spacing: 2) {
-            Text("Capture Aura")
-                .font(AuraFont.serif(21, .medium))
-                .foregroundStyle(AuraTheme.textPrimary)
-            Circle()
-                .fill(AuraTheme.accentDot)
-                .frame(width: 5, height: 5)
-                .padding(.top, 4)
-        }
-        .frame(maxWidth: .infinity)
+        Text("Capture Aura")
+            .font(AuraFont.serif(21, .medium))
+            .foregroundStyle(AuraTheme.textPrimary)
+            .frame(maxWidth: .infinity)
     }
 
     // The hero doubles as the search field, but the text field is only inserted
