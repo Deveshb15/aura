@@ -31,6 +31,27 @@ struct CardView: View {
                 if item.itemType == .file || item.itemType == .image {
                     Button("Reveal in Finder", systemImage: "folder") { store.revealInFinder(item) }
                 }
+                Menu("Add to Collection") {
+                    if store.collections.isEmpty {
+                        Text("No collections yet")
+                    } else {
+                        ForEach(store.collections) { collection in
+                            Button {
+                                store.setCollection(item, to: collection.id)
+                            } label: {
+                                if item.collectionId == collection.id {
+                                    Label(collection.name, systemImage: "checkmark")
+                                } else {
+                                    Text(collection.name)
+                                }
+                            }
+                        }
+                    }
+                    if item.collectionId != nil {
+                        Divider()
+                        Button("Remove from Collection") { store.setCollection(item, to: nil) }
+                    }
+                }
                 Divider()
                 Button("Delete", systemImage: "trash", role: .destructive) { store.delete(item) }
             }

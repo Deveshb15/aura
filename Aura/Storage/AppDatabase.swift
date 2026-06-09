@@ -102,6 +102,16 @@ enum AppDatabase {
             }
         }
 
+        // Collections become real (user-managed) tabs in Phase 5. Drop the
+        // built-ins that are redundant with "All" or imply smart type-filters,
+        // leaving Prompts + Inspirations as friendly starter collections.
+        migrator.registerMigration("v2-prune-builtins") { db in
+            try db.execute(sql: """
+                DELETE FROM collection
+                WHERE kind = 'builtin' AND name IN ('History', 'Colors', 'Assets')
+                """)
+        }
+
         return migrator
     }
 }

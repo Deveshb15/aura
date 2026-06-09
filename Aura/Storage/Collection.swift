@@ -1,9 +1,10 @@
 import Foundation
 import GRDB
 
-/// A category / collection. Built-in tabs are seeded at migration time; users
-/// can add their own in a later phase.
-struct Collection: Codable, Identifiable, Equatable, FetchableRecord, PersistableRecord {
+/// A category / collection (named `ItemCollection` to avoid colliding with the
+/// standard library's `Collection` protocol). Built-in starter collections are
+/// seeded at migration time; users manage their own.
+struct ItemCollection: Codable, Identifiable, Equatable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "collection"
 
     var id: String

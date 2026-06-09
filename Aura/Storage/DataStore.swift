@@ -15,12 +15,14 @@ final class DataStore {
 
     private(set) var libraryItems: [Item] = []
     private(set) var recentItems: [Item] = []
+    private(set) var collections: [ItemCollection] = []
 
     /// Called whenever we write to the pasteboard ourselves, so the clipboard
     /// watcher can ignore that change and avoid nudging our own copy-back.
     var onSelfCopy: ((Int) -> Void)?
 
-    @ObservationIgnored private var observationCancellable: AnyDatabaseCancellable?
+    @ObservationIgnored private var itemsCancellable: AnyDatabaseCancellable?
+    @ObservationIgnored private var collectionsCancellable: AnyDatabaseCancellable?
 
     init(dbPool: DatabasePool, assetStore: AssetStore) {
         self.dbPool = dbPool
@@ -30,21 +32,67 @@ final class DataStore {
     }
 
     private func startObserving() {
-        let observation = ValueObservation.tracking { db in
+        let items = ValueObservation.tracking { db in
             try Item.order(Column("createdAt").desc).limit(400).fetchAll(db)
         }
-        observationCancellable = observation.start(
+        itemsCancellable = items.start(
             in: dbPool,
             scheduling: .immediate,
-            onError: { error in
-                NSLog("Aura: item observation error: \(error)")
-            },
+            onError: { error in NSLog("Aura: item observation error: \(error)") },
             onChange: { [weak self] items in
                 guard let self else { return }
                 self.libraryItems = items
                 self.recentItems = Array(items.prefix(40))
             }
         )
+
+        let collections = ValueObservation.tracking { db in
+            try ItemCollection.order(Column("sortOrder"), Column("createdAt")).fetchAll(db)
+        }
+        collectionsCancellable = collections.start(
+            in: dbPool,
+            scheduling: .immediate,
+            onError: { error in NSLog("Aura: collection observation error: \(error)") },
+            onChange: { [weak self] collections in self?.collections = collections }
+        )
+    }
+
+    // MARK: - Collections
+
+    func createCollection(name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let nextOrder = (collections.map(\.sortOrder).max() ?? 0) + 1
+        let collection = ItemCollection(id: UUID().uuidString, name: trimmed, kind: "user",
+                                    symbol: "folder", sortOrder: nextOrder, createdAt: Date())
+        Task { try? await dbPool.write { db in try collection.insert(db) } }
+    }
+
+    func renameCollection(_ collection: ItemCollection, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var updated = collection
+        updated.name = trimmed
+        let toSave = updated
+        Task { try? await dbPool.write { db in try toSave.update(db) } }
+    }
+
+    func deleteCollection(_ collection: ItemCollection) {
+        let id = collection.id
+        Task {
+            try? await dbPool.write { db in
+                try db.execute(sql: "UPDATE item SET collectionId = NULL WHERE collectionId = ?", arguments: [id])
+                _ = try ItemCollection.deleteOne(db, key: id)
+            }
+        }
+    }
+
+    func setCollection(_ item: Item, to collectionId: String?) {
+        var updated = item
+        updated.collectionId = collectionId
+        updated.updatedAt = Date()
+        let toSave = updated
+        Task { try? await dbPool.write { db in try toSave.update(db) } }
     }
 
     // MARK: - Save (single path for nudge + drag-drop)

@@ -1,15 +1,15 @@
 import SwiftUI
 
-/// The main library window: search, category tabs, and the bento grid.
+/// The main library window: search, collection tabs, and the bento grid.
 struct LibraryWindowView: View {
     @Environment(DataStore.self) private var store
     @State private var query = ""
-    @State private var filter: LibraryFilter = .all
+    @State private var selectedTab: CategoryTab = .all
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            CategoryTabBar(selection: $filter)
+            CategoryTabBar(selection: $selectedTab, count: count(for:))
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
             Divider()
@@ -20,6 +20,12 @@ struct LibraryWindowView: View {
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
+        .onChange(of: store.collections) { _, collections in
+            // If the selected collection was deleted, fall back to All.
+            if case .collection(let id) = selectedTab, !collections.contains(where: { $0.id == id }) {
+                selectedTab = .all
+            }
+        }
     }
 
     private var header: some View {
@@ -55,9 +61,23 @@ struct LibraryWindowView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private func tabMatches(_ item: Item) -> Bool {
+        switch selectedTab {
+        case .all: return true
+        case .collection(let id): return item.collectionId == id
+        }
+    }
+
+    private func count(for tab: CategoryTab) -> Int {
+        switch tab {
+        case .all: return store.libraryItems.count
+        case .collection(let id): return store.libraryItems.filter { $0.collectionId == id }.count
+        }
+    }
+
     private var filteredItems: [Item] {
         store.libraryItems.filter { item in
-            filter.matches(item) &&
+            tabMatches(item) &&
             (query.isEmpty || item.searchText.localizedCaseInsensitiveContains(query))
         }
     }
