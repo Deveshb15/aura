@@ -9,7 +9,7 @@ struct MenuBarContent: View {
             NSApp.activate(ignoringOtherApps: true)
             openWindow(id: "library")
         }
-        .keyboardShortcut("o")
+        .keyboardShortcut("v", modifiers: [.command, .option])
 
         Text("\(dataStore.libraryItems.count) items saved")
 

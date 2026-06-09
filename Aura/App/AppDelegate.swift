@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 
 /// Creates the notch panel, starts clipboard watching, and wires the two
 /// together. The app stays an `.accessory` (menu-bar) agent throughout.
@@ -6,6 +7,7 @@ import AppKit
 final class AppDelegate: NSObject, NSApplicationDelegate {
     let env = AppEnvironment()
     private var notchController: NotchController?
+    private var libraryHotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -24,5 +26,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             watcher?.ignore(changeCount: changeCount)
         }
         watcher.start()
+
+        // Global hotkey ⌥⌘V to summon the library (no Accessibility needed).
+        libraryHotKey = GlobalHotKey(keyCode: UInt32(kVK_ANSI_V),
+                                     modifiers: UInt32(cmdKey | optionKey)) {
+            launcher.open?()
+        }
     }
 }
