@@ -10,17 +10,20 @@ struct CardView: View {
     @State private var hovering = false
     @State private var copied = false
 
+    private let radius: CGFloat = 18
+
     var body: some View {
         cardContent
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(.primary.opacity(0.06)))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(AuraTheme.surface, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(AuraTheme.hairline))
+            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(alignment: .topTrailing) { actionBar }
-            .shadow(color: .black.opacity(hovering ? 0.16 : 0.07), radius: hovering ? 12 : 5, y: 3)
+            .overlay(alignment: .bottomTrailing) { if hovering { ResizeGrip() } }
+            .shadow(color: .black.opacity(hovering ? 0.35 : 0.18), radius: hovering ? 14 : 6, y: 4)
             .scaleEffect(hovering ? 1.012 : 1)
             .animation(.easeOut(duration: 0.16), value: hovering)
-            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .dragOut(item: item, assetURL: store.assetURL(for: item))
             .onHover { hovering = $0 }
             .onTapGesture { store.primaryAction(item) }
@@ -32,31 +35,14 @@ struct CardView: View {
                 if item.itemType == .file || item.itemType == .image {
                     Button("Reveal in Finder", systemImage: "folder") { store.revealInFinder(item) }
                 }
-                Menu("Add to Collection") {
-                    if store.collections.isEmpty {
-                        Text("No collections yet")
-                    } else {
-                        ForEach(store.collections) { collection in
-                            Button {
-                                store.setCollection(item, to: collection.id)
-                            } label: {
-                                if item.collectionId == collection.id {
-                                    Label(collection.name, systemImage: "checkmark")
-                                } else {
-                                    Text(collection.name)
-                                }
-                            }
-                        }
-                    }
-                    if item.collectionId != nil {
-                        Divider()
-                        Button("Remove from Collection") { store.setCollection(item, to: nil) }
-                    }
-                }
                 Divider()
-                Button("Delete", systemImage: "trash", role: .destructive) { store.delete(item) }
+                Button("Delete", systemImage: "trash", role: .destructive) { delete() }
             }
             .help(item.canOpen ? openHelp : "Click to copy")
+    }
+
+    private func delete() {
+        withAnimation(.easeOut(duration: 0.18)) { store.delete(item) }
     }
 
     @ViewBuilder private var actionBar: some View {
@@ -75,6 +61,7 @@ struct CardView: View {
                         store.open(item)
                     }
                 }
+                CardActionButton(systemName: "xmark", help: "Delete", destructive: true) { delete() }
             }
             .padding(8)
             .transition(.opacity)
@@ -120,22 +107,43 @@ private extension View {
     }
 }
 
-/// A small circular icon button used in the card hover action bar.
+/// A small dark circular icon button used in the card hover action bar.
 struct CardActionButton: View {
     let systemName: String
     let help: String
+    var destructive: Bool = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(destructive ? AuraTheme.destructive : Color.white)
                 .frame(width: 24, height: 24)
-                .background(.regularMaterial, in: Circle())
-                .overlay(Circle().strokeBorder(.primary.opacity(0.08)))
+                .background(Color.black.opacity(0.55), in: Circle())
+                .overlay(Circle().strokeBorder(Color.white.opacity(0.12)))
         }
         .buttonStyle(.plain)
         .help(help)
+    }
+}
+
+/// Decorative bottom-right resize grip (three diagonal hatches), matching the
+/// mockup. Purely cosmetic — the masonry grid stays automatic.
+struct ResizeGrip: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let shading = GraphicsContext.Shading.color(.white.opacity(0.22))
+            for i in 0..<3 {
+                let offset = CGFloat(i) * 4 + 1
+                var path = Path()
+                path.move(to: CGPoint(x: size.width - offset, y: size.height))
+                path.addLine(to: CGPoint(x: size.width, y: size.height - offset))
+                ctx.stroke(path, with: shading, lineWidth: 1.2)
+            }
+        }
+        .frame(width: 11, height: 11)
+        .padding(9)
+        .allowsHitTesting(false)
     }
 }

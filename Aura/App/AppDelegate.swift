@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var libraryHotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        FontRegistrar.registerBundledFonts()
         NSApp.setActivationPolicy(.accessory)
 
         let controller = NotchController(state: NotchStateModel(), dataStore: env.dataStore)

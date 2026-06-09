@@ -39,7 +39,7 @@ enum MasonryColumnizer {
             return 150
         case .text:
             let length = item.textContent?.count ?? 0
-            return min(280, 90 + CGFloat(length) / 3.0)
+            return min(340, 110 + CGFloat(length) / 2.6)
         }
     }
 }

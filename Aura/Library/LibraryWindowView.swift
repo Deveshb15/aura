@@ -1,32 +1,35 @@
 import SwiftUI
 
-/// The main library window: search, collection tabs, and the bento grid.
+/// The main library window, redesigned to match the Figma: a near-black canvas,
+/// a centered "Capture Aura" serif wordmark, a giant serif "Ask your Memory…"
+/// hero that doubles as the search field, content-type tabs, and the bento grid.
 struct LibraryWindowView: View {
     @Environment(DataStore.self) private var store
     @State private var query = ""
-    @State private var selectedTab: CategoryTab = .all
+    @State private var selectedTab: ContentTab = .all
     @State private var searchResults: [Item] = []
+    @State private var editingSearch = false
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            CategoryTabBar(selection: $selectedTab, count: count(for:))
-                .padding(.horizontal, 20)
-                .padding(.bottom, 12)
-            Divider()
-            if filteredItems.isEmpty {
-                emptyState
-            } else {
-                BentoGridView(items: filteredItems)
+        ZStack(alignment: .top) {
+            AuraTheme.background.ignoresSafeArea()
+
+            VStack(spacing: 0) {
+                wordmark
+                    .padding(.top, 26)
+                    .padding(.bottom, 52)
+                searchHero
+                    .padding(.horizontal, 40)
+                    .padding(.bottom, 26)
+                ContentTypeTabBar(selection: $selectedTab)
+                    .padding(.horizontal, 40)
+                    .padding(.bottom, 18)
+                content
             }
         }
-        .background(Color(nsColor: .windowBackgroundColor))
-        .onChange(of: store.collections) { _, collections in
-            // If the selected collection was deleted, fall back to All.
-            if case .collection(let id) = selectedTab, !collections.contains(where: { $0.id == id }) {
-                selectedTab = .all
-            }
-        }
+        .preferredColorScheme(.dark)
+        .background(WindowFullScreenEnabler())
         .task(id: query) {
             let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { searchResults = []; return }
@@ -36,56 +39,135 @@ struct LibraryWindowView: View {
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "tray.full.fill").foregroundStyle(.tint)
-            Text("Aura").font(.system(size: 16, weight: .bold))
-            Spacer()
-            HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass")
-                    .foregroundStyle(.secondary)
-                    .font(.system(size: 12))
-                TextField("Search", text: $query)
-                    .textFieldStyle(.plain)
-                    .frame(width: 220)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(Color.gray.opacity(0.1), in: Capsule())
+    // MARK: - Header
+
+    private var wordmark: some View {
+        HStack(alignment: .top, spacing: 2) {
+            Text("Capture Aura")
+                .font(AuraFont.serif(21, .medium))
+                .foregroundStyle(AuraTheme.textPrimary)
+            Circle()
+                .fill(AuraTheme.accentDot)
+                .frame(width: 5, height: 5)
+                .padding(.top, 4)
         }
-        .padding(20)
+        .frame(maxWidth: .infinity)
+    }
+
+    // The hero doubles as the search field, but the text field is only inserted
+    // (and focused) once tapped — otherwise the window would auto-focus it on
+    // launch and show a blinking caret before the user has clicked anything.
+    @ViewBuilder private var searchHero: some View {
+        Group {
+            if editingSearch {
+                TextField("", text: $query)
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(AuraTheme.textPrimary)
+                    .tint(AuraTheme.accentDot)
+                    .focused($searchFocused)
+                    .onAppear { searchFocused = true }
+                    .onChange(of: searchFocused) { _, focused in
+                        if !focused && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            editingSearch = false
+                        }
+                    }
+            } else {
+                Text(query.isEmpty ? "Ask your Memory…" : query)
+                    .foregroundStyle(query.isEmpty ? AuraTheme.textSecondary : AuraTheme.textPrimary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture { editingSearch = true }
+            }
+        }
+        .font(AuraFont.serif(60, .regular, .tall))
+        .lineLimit(1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - Content
+
+    @ViewBuilder private var content: some View {
+        if filteredItems.isEmpty {
+            emptyState
+        } else {
+            BentoGridView(items: filteredItems)
+        }
     }
 
     private var emptyState: some View {
         VStack(spacing: 10) {
-            Image(systemName: "tray").font(.system(size: 40)).foregroundStyle(.secondary)
-            Text(store.libraryItems.isEmpty ? "Nothing saved yet" : "No matches")
-                .font(.headline)
-                .foregroundStyle(.secondary)
+            Image(systemName: "tray")
+                .font(.system(size: 34))
+                .foregroundStyle(AuraTheme.textTertiary)
+            Text(emptyTitle)
+                .font(AuraFont.serif(22, .regular))
+                .foregroundStyle(AuraTheme.textSecondary)
             Text("Drop things into the notch or copy something to get started.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 12))
+                .foregroundStyle(AuraTheme.textTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func tabMatches(_ item: Item) -> Bool {
-        switch selectedTab {
-        case .all: return true
-        case .collection(let id): return item.collectionId == id
-        }
-    }
+    // MARK: - Filtering
 
-    private func count(for tab: CategoryTab) -> Int {
-        switch tab {
-        case .all: return store.libraryItems.count
-        case .collection(let id): return store.libraryItems.filter { $0.collectionId == id }.count
-        }
+    private var isSearching: Bool {
+        !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var filteredItems: [Item] {
-        let searching = !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        let base = searching ? searchResults : store.libraryItems
-        return base.filter(tabMatches)
+        // While searching, show all matches across types; otherwise filter by tab.
+        if isSearching { return searchResults }
+        if selectedTab == .all { return store.libraryItems }
+        return store.libraryItems.filter { ContentTab.of($0) == selectedTab }
+    }
+
+    private var emptyTitle: String {
+        if isSearching { return "No matches" }
+        return store.libraryItems.isEmpty ? "Nothing saved yet" : "Nothing in \(selectedTab.label)"
+    }
+}
+
+/// Configures the Library window's chrome directly on the `NSWindow`: a
+/// transparent, full-size-content title bar for the edge-to-edge dark look,
+/// while keeping native full screen enabled (the green button). We avoid
+/// SwiftUI's `.windowStyle(.hiddenTitleBar)` because it strips
+/// `.fullScreenPrimary`, leaving the green button to only "maximize".
+private struct WindowFullScreenEnabler: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { ConfigView() }
+    func updateNSView(_ nsView: NSView, context: Context) {
+        (nsView as? ConfigView)?.applyChrome()
+    }
+
+    /// SwiftUI's `Window` scene forces `.fullScreenNone` on its window shortly
+    /// after creation (so the green button only "maximizes"). We re-assert our
+    /// chrome — transparent full-size title bar + `.fullScreenPrimary` — on
+    /// attach, on every SwiftUI update, and on a few delayed ticks to outlast
+    /// that reset, plus a one-time observer in case it re-applies later.
+    final class ConfigView: NSView {
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            applyChrome()
+            for delay in [0.1, 0.5, 1.0, 2.0, 3.0] {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.applyChrome() }
+            }
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(reapply),
+                name: NSWindow.didBecomeKeyNotification, object: window)
+        }
+
+        @objc private func reapply() { applyChrome() }
+
+        func applyChrome() {
+            guard let window else { return }
+            window.styleMask.insert([.titled, .resizable, .fullSizeContentView])
+            window.titlebarAppearsTransparent = true
+            window.titleVisibility = .hidden
+            window.titlebarSeparatorStyle = .none
+            window.collectionBehavior.remove(.fullScreenNone)
+            window.collectionBehavior.insert(.fullScreenPrimary)
+        }
     }
 }
