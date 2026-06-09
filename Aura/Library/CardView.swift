@@ -21,6 +21,7 @@ struct CardView: View {
             .scaleEffect(hovering ? 1.012 : 1)
             .animation(.easeOut(duration: 0.16), value: hovering)
             .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .dragOut(item: item, assetURL: store.assetURL(for: item))
             .onHover { hovering = $0 }
             .onTapGesture { store.primaryAction(item) }
             .contextMenu {
@@ -99,6 +100,22 @@ struct CardView: View {
         case .color: ColorCardView(item: item)
         case .file: FileCardView(item: item)
         case .text: TextCardView(item: item)
+        }
+    }
+}
+
+private extension View {
+    /// Makes a card draggable OUT of the vault: images/files drag as a file URL
+    /// (drop into Finder or another app), links as a URL, text/colors as text.
+    @ViewBuilder
+    func dragOut(item: Item, assetURL: URL?) -> some View {
+        switch item.itemType {
+        case .image, .file:
+            if let assetURL { self.draggable(assetURL) } else { self }
+        case .url:
+            if let url = URL(string: item.textContent ?? "") { self.draggable(url) } else { self }
+        case .text, .color:
+            self.draggable(item.textContent ?? "")
         }
     }
 }

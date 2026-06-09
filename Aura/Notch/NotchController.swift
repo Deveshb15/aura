@@ -25,6 +25,7 @@ final class NotchController {
     private var expandWorkItem: DispatchWorkItem?
     private var collapseWorkItem: DispatchWorkItem?
     private var pendingExpiryTask: Task<Void, Never>?
+    private var screensChangedWork: DispatchWorkItem?
 
     private let openDwell: TimeInterval = 0.12
     private let closeDelay: TimeInterval = 0.20
@@ -80,13 +81,26 @@ final class NotchController {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.screensChanged() }
+            MainActor.assumeIsolated { self?.scheduleScreensChanged() }
         }
+    }
+
+    /// Display reconfiguration (plug/unplug, lid open/close, resolution change)
+    /// can fire several notifications in a burst — debounce, then relocate.
+    private func scheduleScreensChanged() {
+        screensChangedWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in self?.screensChanged() }
+        screensChangedWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
     }
 
     private func screensChanged() {
         geometry = NotchGeometry.current()
+        // Move the panel onto the (possibly new) notched/main screen and ensure
+        // it's still on top after relocating. Falls back to the top-center pill
+        // when no notched screen is present (e.g. clamshell on an external).
         panel?.setFrame(geometry.windowFrame, display: true)
+        panel?.orderFrontRegardless()
         state.collapsedSize = geometry.collapsedSize
         let mode: NotchInteractiveMode = state.mode == .expanded ? .expanded : .collapsed
         container?.interactiveRect = geometry.interactiveRect(for: mode)
