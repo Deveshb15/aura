@@ -1,5 +1,7 @@
 # Build output
 build/
+dist/
+*.dmg
 DerivedData/
 *.xcuserstate
 xcuserdata/
