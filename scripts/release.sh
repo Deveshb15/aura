@@ -50,17 +50,24 @@ if [ -n "$NOTARY_PROFILE" ]; then
   xcrun stapler staple "$APP_PATH"
 fi
 
-step "Building the DMG (drag-to-Applications)"
+step "Rendering the DMG background (Aura dark serif art)"
 mkdir -p "$DIST_DIR"
+swift Tools/DMGBackground.swift
+tiffutil -cathidpicheck dist/dmg-bg-1x.png dist/dmg-bg-2x.png -out dist/dmg-bg.tiff >/dev/null
+
+step "Building the DMG (drag-to-Applications)"
 rm -rf "$STAGING"; mkdir -p "$STAGING"
 cp -R "$APP_PATH" "$STAGING/"
 rm -f "$DMG_PATH"
+# Drop-zone coords must match Tools/DMGBackground.swift (app 180,205 — Applications 480,205).
 if ! create-dmg \
       --volname "$APP_NAME" \
-      --window-size 540 380 \
-      --icon-size 110 \
-      --icon "$APP_NAME.app" 150 195 \
-      --app-drop-link 390 195 \
+      --background "dist/dmg-bg.tiff" \
+      --window-size 660 420 \
+      --icon-size 128 \
+      --text-size 13 \
+      --icon "$APP_NAME.app" 180 205 \
+      --app-drop-link 480 205 \
       --hdiutil-quiet \
       "$DMG_PATH" "$STAGING" 2>/dev/null; then
   echo "create-dmg styling failed; falling back to plain hdiutil DMG"
