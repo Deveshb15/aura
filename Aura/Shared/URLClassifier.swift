@@ -7,6 +7,9 @@ enum URLClassifier {
         if host.contains("youtube.") || host == "youtu.be" {
             return .youtube
         }
+        if host == "vimeo.com" || host.hasSuffix(".vimeo.com") || host == "player.vimeo.com" {
+            return .vimeo
+        }
         if host == "twitter.com" || host == "x.com" || host.hasSuffix(".twitter.com") || host.hasSuffix(".x.com") {
             return .twitter
         }

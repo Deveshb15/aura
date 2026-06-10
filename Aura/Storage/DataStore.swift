@@ -12,6 +12,7 @@ import GRDB
 final class DataStore {
     private let dbPool: DatabasePool
     private let assetStore: AssetStore
+    private let semanticIndex: SemanticIndex
 
     private(set) var libraryItems: [Item] = []
     private(set) var recentItems: [Item] = []
@@ -27,8 +28,13 @@ final class DataStore {
     init(dbPool: DatabasePool, assetStore: AssetStore) {
         self.dbPool = dbPool
         self.assetStore = assetStore
+        self.semanticIndex = SemanticIndex(dbPool: dbPool)
         startObserving()
-        Task { [weak self] in await self?.backfillPending() }
+        Task { [weak self] in
+            await self?.semanticIndex.reload()
+            await self?.backfillPending()
+            await self?.backfillSearchIndex()
+        }
     }
 
     private func startObserving() {
@@ -107,6 +113,12 @@ final class DataStore {
             item.type = ItemType.text.rawValue
             item.textContent = string
             item.title = Self.titleSnippet(from: string)
+            // A "link + note" capture stays text but carries link metadata so it
+            // also shows under Links and renders an embed.
+            if let url = CaptureCandidate.firstWebURL(in: string) {
+                item.host = url.host
+                item.urlSubtype = URLClassifier.subtype(for: url).rawValue
+            }
 
         case .url(let url):
             item.type = ItemType.url.rawValue
@@ -144,10 +156,21 @@ final class DataStore {
             try await dbPool.write { [item] db in
                 try item.insert(db)
             }
+            // Enrich for previews first, THEN mine + embed for search so the
+            // corpus includes any title/description the enrichment fetched.
             switch item.itemType {
-            case .url: Task { [weak self] in await self?.enrichLink(item) }
-            case .file: Task { [weak self] in await self?.enrichFile(item) }
-            default: break
+            case .url, .text where item.linkURL != nil:
+                Task { [weak self] in
+                    await self?.enrichLink(item)
+                    await self?.enrichForSearch(itemID: item.id)
+                }
+            case .file:
+                Task { [weak self] in
+                    await self?.enrichFile(item)
+                    await self?.enrichForSearch(itemID: item.id)
+                }
+            default:
+                Task { [weak self] in await self?.enrichForSearch(itemID: item.id) }
             }
         } catch {
             NSLog("Aura: save failed: \(error)")
@@ -156,15 +179,14 @@ final class DataStore {
 
     // MARK: - Rich link previews
 
-    /// Fetches Open Graph / YouTube metadata for a saved URL and updates the row
-    /// in place (the card upgrades live via ValueObservation). Runs after the
-    /// item is already saved, so the network fetch never blocks the save.
+    /// Fetches Open Graph / YouTube metadata for a saved URL — or the URL
+    /// embedded in a "link + note" text capture — and updates the row in place
+    /// (the card upgrades live via ValueObservation). Runs after the item is
+    /// already saved, so the network fetch never blocks the save.
     func enrichLink(_ item: Item) async {
         // Respect the "fetch link previews" setting (the only networked feature).
         guard UserDefaults.standard.object(forKey: "linkPreviewsEnabled") as? Bool ?? true else { return }
-        guard item.itemType == .url,
-              let urlString = item.textContent,
-              let url = URL(string: urlString) else { return }
+        guard let url = item.linkURL else { return }
 
         let meta = await LinkMetadataService.fetch(url: url)
 
@@ -183,9 +205,12 @@ final class DataStore {
         if let description = meta.description { updated.ogDescription = description }
         // Always set ogTitle (falling back to host) so this item is marked
         // enriched and the backfill won't keep re-fetching it.
-        let resolvedTitle = meta.title ?? updated.host ?? urlString
+        let resolvedTitle = meta.title ?? updated.host ?? url.host ?? url.absoluteString
         updated.ogTitle = resolvedTitle
-        updated.title = resolvedTitle
+        // Text captures keep their snippet title; the embed shows ogTitle.
+        if item.itemType == .url { updated.title = resolvedTitle }
+        if updated.host == nil { updated.host = url.host }
+        if updated.urlSubtype == nil { updated.urlSubtype = URLClassifier.subtype(for: url).rawValue }
         updated.updatedAt = Date()
 
         let toSave = updated
@@ -213,12 +238,74 @@ final class DataStore {
         try? await dbPool.write { db in try toSave.update(db) }
     }
 
-    /// Enriches any previously-saved links or files that were never processed.
+    // MARK: - Search enrichment (extracted text + embedding)
+
+    /// Mines an item's content into `extractedText` (image OCR, link article
+    /// body, PDF text), folds the whole corpus into a dense embedding, and
+    /// stores the vector — so the item becomes findable by meaning, not just
+    /// keywords. Re-fetches the item first so it sees fields written by
+    /// `enrichLink`/`enrichFile`, and updates only the `extractedText` column to
+    /// avoid clobbering those concurrent writers.
+    func enrichForSearch(itemID: String) async {
+        guard let item = try? await dbPool.read({ db in try Item.fetchOne(db, key: itemID) }) else { return }
+
+        let extracted = await extractText(for: item)
+        if let extracted, !extracted.isEmpty {
+            let now = Date()
+            try? await dbPool.write { db in
+                try db.execute(sql: "UPDATE item SET extractedText = ?, updatedAt = ? WHERE id = ?",
+                               arguments: [extracted, now, itemID])
+            }
+        }
+
+        // Build the corpus from the (possibly updated) item and embed it. If
+        // assets aren't downloaded yet, embed returns nil and the backfill will
+        // pick this item up on a later launch.
+        var enriched = item
+        if let extracted, !extracted.isEmpty { enriched.extractedText = extracted }
+        guard let vector = await EmbeddingService.shared.embed(enriched.searchText) else { return }
+
+        let record = EmbeddingRecord(itemId: itemID, vector: vector,
+                                     model: EmbeddingService.modelIdentifier, sourceHash: nil)
+        try? await dbPool.write { db in try record.save(db) }
+        await semanticIndex.upsert(itemId: itemID, vector: vector)
+    }
+
+    /// Type-specific text extraction. The synchronous, CPU-bound extractors are
+    /// offloaded off the main actor; the link path is already non-isolated.
+    private func extractText(for item: Item) async -> String? {
+        switch item.itemType {
+        case .image:
+            guard let path = item.assetPath else { return nil }
+            let url = assetStore.absoluteURL(for: path)
+            return await Task.detached { OCRService.recognizeText(in: url) }.value
+
+        case .file:
+            guard let path = item.assetPath else { return nil }
+            let isPDF = item.uti == "com.adobe.pdf" || (item.fileName?.lowercased().hasSuffix(".pdf") ?? false)
+            guard isPDF else { return nil }
+            let url = assetStore.absoluteURL(for: path)
+            return await Task.detached { PDFTextExtractor.extractText(from: url) }.value
+
+        case .url, .text:
+            guard UserDefaults.standard.object(forKey: "linkPreviewsEnabled") as? Bool ?? true,
+                  let url = item.linkURL else { return nil }
+            return await LinkMetadataService.fetchArticleText(url: url)
+
+        case .color:
+            return nil
+        }
+    }
+
+    /// Enriches any previously-saved links, files, or link-bearing text
+    /// captures that were never processed.
     private func backfillPending() async {
         let pending: [Item] = (try? await dbPool.read { db in
             try Item
-                .filter([ItemType.url.rawValue, ItemType.file.rawValue].contains(Column("type"))
-                        && Column("ogTitle") == nil)
+                .filter(Column("ogTitle") == nil
+                        && ([ItemType.url.rawValue, ItemType.file.rawValue].contains(Column("type"))
+                            || (Column("type") == ItemType.text.rawValue
+                                && Column("textContent").like("%http%"))))
                 .order(Column("createdAt").desc)
                 .limit(40)
                 .fetchAll(db)
@@ -226,10 +313,33 @@ final class DataStore {
         for item in pending {
             switch item.itemType {
             case .url: await enrichLink(item)
+            case .text where item.linkURL != nil: await enrichLink(item)
             case .file: await enrichFile(item)
             default: break
             }
         }
+    }
+
+    /// One-time index build for items captured before semantic search existed:
+    /// embed whatever text they already have (title / content / link metadata).
+    /// Cheap — no network or OCR — so it covers a large batch per launch;
+    /// freshly-captured items are fully enriched live by `enrichForSearch`.
+    private func backfillSearchIndex() async {
+        let pending: [Item] = (try? await dbPool.read { db in
+            try Item
+                .filter(sql: "id NOT IN (SELECT itemId FROM embedding)")
+                .order(Column("createdAt").desc)
+                .limit(200)
+                .fetchAll(db)
+        }) ?? []
+        guard !pending.isEmpty else { return }
+        for item in pending {
+            guard let vector = await EmbeddingService.shared.embed(item.searchText) else { continue }
+            let record = EmbeddingRecord(itemId: item.id, vector: vector,
+                                         model: EmbeddingService.modelIdentifier, sourceHash: nil)
+            try? await dbPool.write { db in try record.save(db) }
+        }
+        await semanticIndex.reload()
     }
 
     /// Resolves a stored relative asset path (og image, favicon, …) to a URL.
@@ -240,22 +350,25 @@ final class DataStore {
 
     // MARK: - Search
 
-    /// Full-text search over the FTS5 index (title / text / link metadata /
-    /// filename), prefix-matched and ordered by relevance. Empty query returns
-    /// the current library.
+    /// Hybrid natural-language search: FTS5 keyword matching fused with semantic
+    /// vector similarity (see `HybridSearch`), ordered best-match-first. Empty
+    /// query returns the current library.
     func search(_ query: String) async -> [Item] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return libraryItems }
-        let results: [Item]? = try? await dbPool.read { db in
-            guard let pattern = FTS5Pattern(matchingAllPrefixesIn: trimmed) else { return [] }
-            return try Item.fetchAll(db, sql: """
-                SELECT item.* FROM item
-                JOIN item_fts ON item_fts.rowid = item.rowid
-                WHERE item_fts MATCH ?
-                ORDER BY rank
-                """, arguments: [pattern])
-        }
-        return results ?? []
+        let hybrid = HybridSearch(dbPool: dbPool, semanticIndex: semanticIndex)
+        return await hybrid.search(trimmed)
+    }
+
+    /// Whether the on-device conversational answer layer can run on this Mac
+    /// (macOS 26+ / Apple Silicon / Apple Intelligence on). The UI uses this to
+    /// decide whether to show the answer banner.
+    var canAnswer: Bool { AnswerService.isAvailable }
+
+    /// Stream a written answer to `query`, grounded in `items` (the current
+    /// search results). Yields nothing when unavailable — see `AnswerService`.
+    func answer(to query: String, from items: [Item]) -> AsyncStream<String> {
+        AnswerService.streamAnswer(query: query, items: items)
     }
 
     // MARK: - Bulk
@@ -263,10 +376,14 @@ final class DataStore {
     /// Deletes every saved item and its on-disk assets (collections are kept).
     func deleteAllItems() {
         let assetStore = self.assetStore
+        let semanticIndex = self.semanticIndex
         Task {
             do {
+                // Embedding rows cascade-delete with their items (foreign key);
+                // reload the in-memory index so search reflects the empty vault.
                 try await dbPool.write { db in _ = try Item.deleteAll(db) }
                 assetStore.removeAllAssets()
+                await semanticIndex.reload()
             } catch {
                 NSLog("Aura: clear-all failed: \(error)")
             }
@@ -316,14 +433,21 @@ final class DataStore {
     func open(_ item: Item) {
         switch item.itemType {
         case .url:
-            if let url = item.textContent.flatMap({ URL(string: $0) }) {
+            if let url = item.linkURL {
                 NSWorkspace.shared.open(url)
             }
         case .file, .image:
             if let url = assetURL(for: item) {
                 NSWorkspace.shared.open(url)
             }
-        case .text, .color:
+        case .text:
+            // A "link + note" capture opens its embedded link; plain text copies.
+            if let url = item.linkURL {
+                NSWorkspace.shared.open(url)
+            } else {
+                copyToClipboard(item)
+            }
+        case .color:
             copyToClipboard(item)
         }
     }
@@ -337,12 +461,16 @@ final class DataStore {
         let id = item.id
         let assetPath = item.assetPath
         let assetStore = self.assetStore
+        let semanticIndex = self.semanticIndex
         Task {
             do {
+                // The embedding row cascade-deletes with the item; drop it from
+                // the in-memory index too so it stops appearing in results.
                 try await dbPool.write { db in
                     _ = try Item.deleteOne(db, key: id)
                 }
                 if let assetPath { assetStore.removeAsset(relativePath: assetPath) }
+                await semanticIndex.remove(itemId: id)
             } catch {
                 NSLog("Aura: delete failed: \(error)")
             }

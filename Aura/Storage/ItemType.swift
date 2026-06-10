@@ -14,7 +14,12 @@ enum ItemType: String, Codable, CaseIterable {
 enum URLSubtype: String, Codable {
     case generic
     case youtube
+    case vimeo
     case twitter
     case github
     case article
+
+    /// Video hosts whose title/description come from an oEmbed endpoint rather
+    /// than page-body scraping.
+    var isVideo: Bool { self == .youtube || self == .vimeo }
 }

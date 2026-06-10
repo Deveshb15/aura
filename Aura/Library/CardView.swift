@@ -70,7 +70,7 @@ struct CardView: View {
 
     private var openHelp: String {
         switch item.itemType {
-        case .url: return "Open link"
+        case .url, .text: return "Open link"
         case .file: return "Open file"
         case .image: return "Open image"
         default: return "Open"
@@ -86,7 +86,9 @@ struct CardView: View {
         case .image: ImageCardView(item: item, assetURL: store.assetURL(for: item))
         case .color: ColorCardView(item: item)
         case .file: FileCardView(item: item)
-        case .text: TextCardView(item: item)
+        case .text: TextCardView(item: item,
+                                 heroURL: store.fileURL(forRelativePath: item.ogImagePath),
+                                 faviconURL: store.fileURL(forRelativePath: item.faviconPath))
         }
     }
 }

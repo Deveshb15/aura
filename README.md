@@ -46,6 +46,22 @@ library from anywhere.
 
 <br/>
 
+## Ask your Memory
+
+Search is the heart of Aura, and it's **semantic** — it reads what you actually saved, not
+just titles. Text in your screenshots (OCR), the readable body of the articles behind your
+links, video titles and descriptions — each item is turned into an embedding with Apple's
+on-device **NaturalLanguage** models, and your library is ranked by *meaning*. So
+*"that documentary about money"* or *"everything I saved about investing"* surfaces the right
+things even when the exact words don't match.
+
+On Macs with Apple Intelligence (**macOS 26+, Apple Silicon**), pressing **return** also
+streams a short written **answer** above the results — grounded in the items it found, and
+generated entirely on-device by Apple's **Foundation Models**. Older or Intel Macs get the
+same semantic-ranked grid, just without the written answer. Either way, nothing leaves your Mac.
+
+<br/>
+
 ## Install
 
 <table>
@@ -80,9 +96,11 @@ warnings. Requires **macOS 14** or later.
   are cached inline for a fast grid.
 - **Retrieval needs no special permissions** — click an item to copy it back, or drag it out to
   any app. No paste-injection, so no Accessibility prompt.
+- **Search is fully local.** OCR (Vision), embeddings (NaturalLanguage), and the written
+  answer (Foundation Models) all run **on-device** — your captures are never sent anywhere.
 - **It stays on your Mac.** No analytics, no account, no sync. The only network calls fetch
-  link-preview images and favicons from the sites you actually save. Delete the Application
-  Support folder to reset everything.
+  link previews and the readable text of the pages you save, so links are searchable by their
+  content (toggle off in Settings). Delete the Application Support folder to reset everything.
 
 <br/>
 
@@ -120,6 +138,7 @@ Aura/
   Notch/                     NotchController + panel, hover state machine, rubber-band nudge
   Library/                   LibraryWindowView, ContentTypeTabBar, BentoGridView, CardView, Cards/, AuraTheme
   Storage/                   AppDatabase (schema), DataStore, Item, AssetStore, ThumbnailService
+  Search/                    EmbeddingService, SemanticIndex, HybridSearch, OCRService, ArticleExtractor, AnswerService
   Settings/                  SettingsView
   Shared/                    URLClassifier, ColorDetector, LinkMetadataService, Color+Hex
   Fonts/                     Awesome Serif

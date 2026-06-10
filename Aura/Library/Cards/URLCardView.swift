@@ -23,7 +23,7 @@ struct URLCardView: View {
                     .frame(height: heroHeight)
                     .frame(maxWidth: .infinity)
                     .clipped()
-                if item.subtype == .youtube { playBadge }
+                if item.subtype.isVideo { playBadge }
             }
         } else {
             ZStack {

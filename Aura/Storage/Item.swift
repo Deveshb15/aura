@@ -45,6 +45,11 @@ struct Item: Codable, Identifiable, Equatable, FetchableRecord, PersistableRecor
 
     var collectionId: String?
 
+    // Searchable text mined from the item's content (image OCR, link article
+    // body, video description, PDF text). Feeds both the FTS5 index and the
+    // semantic embedding. Populated asynchronously after save (v3 column).
+    var extractedText: String?
+
     init(id: String = UUID().uuidString,
          type: ItemType,
          createdAt: Date = Date(),
@@ -60,18 +65,30 @@ extension Item {
     var itemType: ItemType { ItemType(rawValue: type) ?? .text }
     var subtype: URLSubtype { URLSubtype(rawValue: urlSubtype ?? "") ?? .generic }
 
-    /// Whether a primary click can "open" this item (vs. just copy it).
-    var canOpen: Bool {
+    /// The URL this item points at: the whole content for `.url` items, or the
+    /// first web URL embedded in a `.text` capture ("link + note" messages).
+    var linkURL: URL? {
         switch itemType {
-        case .url: return URL(string: textContent ?? "") != nil
-        case .file, .image: return assetPath != nil
-        case .text, .color: return false
+        case .url: return URL(string: textContent ?? "")
+        case .text: return CaptureCandidate.firstWebURL(in: textContent ?? "")
+        default: return nil
         }
     }
 
-    /// Combined haystack for simple in-memory search (FTS5 used for the real search later).
+    /// Whether a primary click can "open" this item (vs. just copy it).
+    var canOpen: Bool {
+        switch itemType {
+        case .url, .text: return linkURL != nil
+        case .file, .image: return assetPath != nil
+        case .color: return false
+        }
+    }
+
+    /// Combined haystack mined from every text-bearing field. Used as the
+    /// in-memory filter fallback, and — crucially — as the corpus we both feed
+    /// to FTS5 and embed, so keyword and semantic search see the same text.
     var searchText: String {
-        [title, textContent, host, fileName, ogTitle, ogDescription]
+        [title, textContent, host, fileName, ogTitle, ogDescription, extractedText]
             .compactMap { $0 }
             .joined(separator: " ")
     }

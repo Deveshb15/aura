@@ -22,8 +22,13 @@ enum LinkMetadataService {
         "(KHTML, like Gecko) Version/17.0 Safari/605.1.15"
 
     static func fetch(url: URL) async -> LinkMetadata {
-        if URLClassifier.subtype(for: url) == .youtube, let yt = await YouTube.metadata(for: url) {
-            return yt
+        switch URLClassifier.subtype(for: url) {
+        case .youtube:
+            if let yt = await YouTube.metadata(for: url) { return yt }
+        case .vimeo:
+            if let vm = await Vimeo.metadata(for: url) { return vm }
+        default:
+            break
         }
 
         let lp = await fetchViaLinkPresentation(url: url)
@@ -40,6 +45,15 @@ enum LinkMetadataService {
             imageData: lp?.imageData ?? og?.imageData,
             iconData: lp?.iconData ?? og?.iconData
         )
+    }
+
+    /// Fetches the page and extracts its readable body text, for the search
+    /// index. Video hosts are skipped — their "body" is JS chrome, and their
+    /// title/description already come from oEmbed (see `fetch`).
+    static func fetchArticleText(url: URL) async -> String? {
+        guard !URLClassifier.subtype(for: url).isVideo else { return nil }
+        guard let html = await fetchHTML(url: url) else { return nil }
+        return ArticleExtractor.extractText(fromHTML: html, url: url)
     }
 
     // MARK: - LinkPresentation
@@ -233,5 +247,29 @@ enum YouTube {
             }
         }
         return LinkMetadata(title: title, description: nil, imageData: nil, iconData: nil)
+    }
+}
+
+/// Vimeo's public oEmbed endpoint returns title, description, and a thumbnail
+/// URL with no scraping — giving video items real searchable text.
+enum Vimeo {
+    static func metadata(for url: URL) async -> LinkMetadata? {
+        var components = URLComponents(string: "https://vimeo.com/api/oembed.json")!
+        components.queryItems = [.init(name: "url", value: url.absoluteString)]
+        guard let oembedURL = components.url,
+              let (data, _) = try? await URLSession.shared.data(from: oembedURL),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+
+        let title = (object["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let description = (object["description"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        var imageData: Data?
+        if let thumb = object["thumbnail_url"] as? String, let thumbURL = URL(string: thumb) {
+            imageData = await LinkMetadataService.fetchImageData(from: thumbURL, minPixel: 100)
+        }
+
+        if title == nil, description == nil, imageData == nil { return nil }
+        return LinkMetadata(title: title, description: description, imageData: imageData, iconData: nil)
     }
 }

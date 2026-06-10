@@ -11,6 +11,12 @@ struct LibraryWindowView: View {
     @State private var editingSearch = false
     @FocusState private var searchFocused: Bool
 
+    // On-device AI answer (macOS 26+ / Apple Silicon). Streamed on Return.
+    @State private var answerText = ""
+    @State private var isAnswering = false
+    @State private var answeredQuery = ""
+    @State private var answerTask: Task<Void, Never>?
+
     var body: some View {
         ZStack(alignment: .top) {
             AuraTheme.background.ignoresSafeArea()
@@ -21,7 +27,8 @@ struct LibraryWindowView: View {
                     .padding(.bottom, 52)
                 searchHero
                     .padding(.horizontal, 40)
-                    .padding(.bottom, 26)
+                    .padding(.bottom, showAnswer ? 16 : 26)
+                answerBanner
                 ContentTypeTabBar(selection: $selectedTab)
                     .padding(.horizontal, 40)
                     .padding(.bottom, 18)
@@ -36,6 +43,12 @@ struct LibraryWindowView: View {
             try? await Task.sleep(nanoseconds: 200_000_000) // debounce
             guard !Task.isCancelled else { return }
             searchResults = await store.search(trimmed)
+        }
+        .onChange(of: query) { _, newValue in
+            // A typed edit invalidates any answer for the previous question.
+            if newValue.trimmingCharacters(in: .whitespacesAndNewlines) != answeredQuery {
+                clearAnswer()
+            }
         }
     }
 
@@ -60,6 +73,7 @@ struct LibraryWindowView: View {
                     .tint(AuraTheme.accentDot)
                     .focused($searchFocused)
                     .onAppear { searchFocused = true }
+                    .onSubmit { askMemory() }
                     .onChange(of: searchFocused) { _, focused in
                         if !focused && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                             editingSearch = false
@@ -77,6 +91,75 @@ struct LibraryWindowView: View {
         .font(AuraFont.serif(60, .regular, .tall))
         .lineLimit(1)
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - AI answer
+
+    private var showAnswer: Bool { isAnswering || !answerText.isEmpty }
+
+    @ViewBuilder private var answerBanner: some View {
+        if showAnswer {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 6) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 12))
+                        .foregroundStyle(AuraTheme.accentDot)
+                    Text("ANSWER")
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .kerning(0.8)
+                        .foregroundStyle(AuraTheme.textSecondary)
+                    if isAnswering {
+                        ProgressView()
+                            .controlSize(.small)
+                            .scaleEffect(0.7)
+                            .tint(AuraTheme.textSecondary)
+                    }
+                    Spacer()
+                }
+                Text(answerText.isEmpty ? "Thinking…" : answerText)
+                    .font(AuraFont.serif(17, .regular))
+                    .foregroundStyle(answerText.isEmpty ? AuraTheme.textTertiary : AuraTheme.textPrimary)
+                    .lineSpacing(3)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .animation(.easeOut(duration: 0.12), value: answerText)
+            }
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AuraTheme.surface))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.06)))
+            .padding(.horizontal, 40)
+            .padding(.bottom, 18)
+            .transition(.opacity)
+        }
+    }
+
+    /// Stream a written answer for the current query, grounded in the live
+    /// search results. No-op when the on-device model is unavailable, so on
+    /// older / Intel Macs Return simply does nothing extra.
+    private func askMemory() {
+        answerTask?.cancel()
+        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard store.canAnswer, !q.isEmpty else { return }
+        answerText = ""
+        isAnswering = true
+        answeredQuery = q
+        answerTask = Task {
+            var items = searchResults
+            if items.isEmpty { items = await store.search(q) }
+            for await chunk in store.answer(to: q, from: items) {
+                if Task.isCancelled { return }
+                answerText = chunk
+            }
+            isAnswering = false
+        }
+    }
+
+    private func clearAnswer() {
+        answerTask?.cancel()
+        answerTask = nil
+        answerText = ""
+        isAnswering = false
+        answeredQuery = ""
     }
 
     // MARK: - Content
@@ -114,7 +197,7 @@ struct LibraryWindowView: View {
         // While searching, show all matches across types; otherwise filter by tab.
         if isSearching { return searchResults }
         if selectedTab == .all { return store.libraryItems }
-        return store.libraryItems.filter { ContentTab.of($0) == selectedTab }
+        return store.libraryItems.filter { ContentTab.tabs(for: $0).contains(selectedTab) }
     }
 
     private var emptyTitle: String {

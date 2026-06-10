@@ -112,6 +112,47 @@ enum AppDatabase {
                 """)
         }
 
+        // Semantic search: mine each item's content into `extractedText`
+        // (image OCR, link article body, video description, PDF text), fold it
+        // into the FTS5 index, and store a dense embedding vector per item.
+        migrator.registerMigration("v3-semantic-search") { db in
+            // 1. New searchable-text column on the main table.
+            try db.alter(table: "item") { t in
+                t.add(column: "extractedText", .text)
+            }
+
+            // 2. Rebuild the FTS5 mirror to also index `extractedText`. Drop the
+            //    old virtual table and its synchronization triggers, then
+            //    recreate — `synchronize` repopulates from existing rows and
+            //    reinstalls the triggers.
+            try db.drop(table: "item_fts")
+            try db.dropFTS5SynchronizationTriggers(forTable: "item_fts")
+            try db.create(virtualTable: "item_fts", using: FTS5()) { t in
+                t.synchronize(withTable: "item")
+                t.column("title")
+                t.column("textContent")
+                t.column("ogTitle")
+                t.column("ogDescription")
+                t.column("host")
+                t.column("fileName")
+                t.column("extractedText")
+            }
+
+            // 3. One dense vector per item for semantic (cosine) retrieval.
+            //    Kept in its own table so a future swap to sqlite-vec stays
+            //    surgical; ON DELETE CASCADE (with PRAGMA foreign_keys=ON)
+            //    drops the vector when its item is deleted.
+            try db.create(table: "embedding") { t in
+                t.column("itemId", .text).primaryKey()
+                    .references("item", onDelete: .cascade)
+                t.column("vector", .blob).notNull()
+                t.column("model", .text).notNull()
+                t.column("dims", .integer).notNull()
+                t.column("sourceHash", .text)
+                t.column("updatedAt", .datetime).notNull()
+            }
+        }
+
         return migrator
     }
 }

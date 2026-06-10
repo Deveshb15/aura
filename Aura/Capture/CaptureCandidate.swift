@@ -42,4 +42,17 @@ struct CaptureCandidate {
               url.host != nil else { return nil }
         return url
     }
+
+    /// First web URL embedded anywhere inside a larger text (a pasted
+    /// "link + note" message). Such captures stay `.text` but get link
+    /// enrichment and show up under both the Text and Links tabs.
+    static func firstWebURL(in text: String) -> URL? {
+        guard text.contains("http") else { return nil }
+        for rawToken in text.split(whereSeparator: \.isWhitespace) {
+            var token = String(rawToken)
+            while let last = token.last, ").,;:!?'\"".contains(last) { token.removeLast() }
+            if let url = webURL(from: token) { return url }
+        }
+        return nil
+    }
 }

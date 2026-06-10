@@ -13,6 +13,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         FontRegistrar.registerBundledFonts()
         NSApp.setActivationPolicy(.accessory)
 
+        // Warm up the embedding model (and trigger its one-time asset download)
+        // so the first search is semantic, not keyword-only.
+        Task.detached(priority: .utility) { await EmbeddingService.shared.prepare() }
+
         let controller = NotchController(state: NotchStateModel(), dataStore: env.dataStore)
         let launcher = env.libraryLauncher
         controller.onOpenLibrary = { launcher.open?() }
