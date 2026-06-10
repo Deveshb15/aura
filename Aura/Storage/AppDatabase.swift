@@ -4,14 +4,22 @@ import GRDB
 /// Opens the on-disk SQLite database and owns the schema migrations.
 enum AppDatabase {
 
-    /// `~/Library/Application Support/Aura/`
+    /// `~/Library/Application Support/Aura/` (real data). DEBUG builds use a
+    /// separate `Aura-Debug` vault so development — and the DEBUG-only
+    /// `eraseDatabaseOnSchemaChange` below — can never touch your real data.
+    /// `AssetStore` routes through here too, so originals are isolated as well.
     static func supportDirectory() throws -> URL {
         let fm = FileManager.default
         let appSupport = try fm.url(for: .applicationSupportDirectory,
                                     in: .userDomainMask,
                                     appropriateFor: nil,
                                     create: true)
-        let dir = appSupport.appendingPathComponent("Aura", isDirectory: true)
+        #if DEBUG
+        let folder = "Aura-Debug"
+        #else
+        let folder = "Aura"
+        #endif
+        let dir = appSupport.appendingPathComponent(folder, isDirectory: true)
         try fm.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }
@@ -30,8 +38,10 @@ enum AppDatabase {
     static var migrator: DatabaseMigrator {
         var migrator = DatabaseMigrator()
         #if DEBUG
-        // During development, rebuild the schema if it changes rather than
-        // forcing manual migrations. Remove before any real release.
+        // DEBUG-only convenience: rebuild the schema on change instead of
+        // writing a migration during dev. Safe now — it only ever touches the
+        // separate `Aura-Debug` vault (see supportDirectory), never real data,
+        // and is never compiled into Release (where additive migrations run).
         migrator.eraseDatabaseOnSchemaChange = true
         #endif
 
