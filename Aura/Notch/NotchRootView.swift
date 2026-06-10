@@ -29,8 +29,9 @@ struct NotchRootView: View {
             .background(NotchShape().fill(Color.black))
             .overlay(NotchShape().stroke(Color.white.opacity(0.08), lineWidth: 0.5))
             .clipShape(NotchShape())
-            // The bouncy spring on the card gives the elastic "slide down" feel.
-            .animation(.spring(response: 0.42, dampingFraction: 0.74), value: state.pending?.id)
+            // Critically damped (dampingFraction 1.0) = a clean slide with NO
+            // overshoot/rubber-band — the card just drops down and retracts.
+            .animation(.spring(response: 0.36, dampingFraction: 1.0), value: state.pending?.id)
             .animation(.spring(response: 0.5, dampingFraction: 0.86), value: state.mode)
             .onDrop(of: DropReceiver.acceptedTypes, isTargeted: dropBinding) { providers in
                 DropReceiver.handle(providers) { candidate in
@@ -50,9 +51,9 @@ struct NotchRootView: View {
                     .padding(.horizontal, 12)
                     .padding(.top, 4)
                     .padding(.bottom, 8)
-                    // Slide down out of the notch on copy, and back up into it
-                    // when it retracts.
-                    .transition(.move(edge: .top).combined(with: .opacity))
+                    // Pure vertical slide: drops straight down out of the notch
+                    // and slides straight back up into it (no fade, no bounce).
+                    .transition(.move(edge: .top))
             } else if state.mode == .expanded {
                 NotchExpandedView(dataStore: dataStore, isDropTargeted: state.isDropTargeted)
                     .padding(.horizontal, 14)

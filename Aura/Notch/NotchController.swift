@@ -224,7 +224,7 @@ final class NotchController {
         let nudge = NudgeItem(candidate: candidate, preview: Self.preview(for: candidate))
         container?.interactiveRect = geometry.interactiveRect(for: .nudge)
         NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
-        withAnimation(.spring(response: 0.42, dampingFraction: 0.74)) {
+        withAnimation(.spring(response: 0.36, dampingFraction: 1.0)) {
             state.mode = .collapsed
             state.pending = nudge
         }
@@ -251,7 +251,7 @@ final class NotchController {
         pendingExpiryTask?.cancel()
         pendingExpiryTask = nil
         container?.interactiveRect = geometry.interactiveRect(for: .collapsed)
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+        withAnimation(.spring(response: 0.32, dampingFraction: 1.0)) {
             state.pending = nil
             state.mode = .collapsed
         }

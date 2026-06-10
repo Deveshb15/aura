@@ -3,6 +3,18 @@
     <channel>
         <title>Aura</title>
         <item>
+            <title>1.1.3</title>
+            <pubDate>Wed, 10 Jun 2026 18:46:47 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>1.1.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Calmer keep card</h2>
+<p>The keep card now drops <strong>straight down</strong> out of the notch, holds still for ~2.5 seconds, and slides straight back up — no more rubber-band bounce or stretch.</p>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.1.3/Aura-1.1.3.dmg" length="10750706" type="application/octet-stream" sparkle:edSignature="vUedk7G88hGItDrF1rr9lX/sAF+WwmCMzoxFZjeVo+dcM+byyW0nHbgnV1QPHoHsLNw5P2gqNAmccI4t+2cKAQ=="/>
+        </item>
+        <item>
             <title>1.1.2</title>
             <pubDate>Wed, 10 Jun 2026 18:16:22 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
