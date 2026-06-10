@@ -40,5 +40,20 @@
 	<false/>
 	<key>NSSupportsSuddenTermination</key>
 	<false/>
+	<!-- Sparkle auto-updates. Feed served from GitHub Pages; archives are the
+	     GitHub Release DMGs, each EdDSA-signed (public key below). -->
+	<key>SUFeedURL</key>
+	<string>https://deveshb15.github.io/aura/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>twVxJcgKa1TiNb9AlIj/hia3ts2AD98hfGyZF7H0qJ4=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
+	<!-- Never install silently — always show the Install / Remind Me Later / Skip panel. -->
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUShowReleaseNotes</key>
+	<true/>
 </dict>
 </plist>

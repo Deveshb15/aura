@@ -8,6 +8,7 @@ struct AuraApp: App {
         MenuBarExtra {
             MenuBarContent()
                 .environment(appDelegate.env.dataStore)
+                .environmentObject(appDelegate.env.updater)
         } label: {
             MenuBarLabel(launcher: appDelegate.env.libraryLauncher)
         }

@@ -22,6 +22,9 @@ packages:
   SwiftSoup:
     url: https://github.com/scinfu/SwiftSoup
     from: "2.7.0"
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.9.0"
 targets:
   Aura:
     type: application
@@ -43,3 +46,5 @@ targets:
         product: GRDB
       - package: SwiftSoup
         product: SwiftSoup
+      - package: Sparkle
+        product: Sparkle

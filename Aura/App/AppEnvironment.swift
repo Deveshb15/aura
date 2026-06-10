@@ -18,6 +18,7 @@ final class AppEnvironment {
     let dataStore: DataStore
     let clipboardWatcher: ClipboardWatcher
     let libraryLauncher = LibraryLauncher()
+    let updater = SparkleUpdater()
 
     init() {
         do {

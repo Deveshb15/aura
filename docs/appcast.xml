@@ -1,0 +1,24 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>Aura</title>
+        <item>
+            <title>1.1.0</title>
+            <pubDate>Wed, 10 Jun 2026 17:13:44 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Ask your Memory — semantic search</h2>
+<p>Aura's search is now <strong>semantic and on-device</strong>. It reads what you actually saved — text in screenshots (OCR), the body of articles behind your links, video titles &amp; descriptions — and ranks your library by meaning, so “that documentary about money” or “everything I saved about investing” just works.</p>
+<ul>
+  <li><strong>Natural-language search</strong> — hybrid keyword + on-device embeddings (NaturalLanguage), 100% local.</li>
+  <li><strong>AI answer</strong> — on Apple Silicon with Apple Intelligence, press Return to get a short written answer grounded in your results (Foundation Models).</li>
+  <li><strong>Richer indexing</strong> — image OCR, link article text, PDF text, and YouTube/Vimeo metadata.</li>
+  <li><strong>Automatic updates</strong> — Aura now updates itself (this is the first build with it).</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.1.0/Aura-1.1.0.dmg" length="10785531" type="application/octet-stream" sparkle:edSignature="uWYjwet1J6iziCxg1WxdOQ/Vj3u8XQD/JDjk+Mf3a1bv4yAcMZO1AymBLRmIm4jDtY9/MbWIpQ0px6mn3KKNBw=="/>
+        </item>
+    </channel>
+</rss>
