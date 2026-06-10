@@ -234,7 +234,7 @@ final class NotchController {
     private func schedulePendingExpiry() {
         pendingExpiryTask?.cancel()
         pendingExpiryTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 6_000_000_000)
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
             guard let self, !Task.isCancelled else { return }
             self.pendingExpiryTask = nil
             self.dismissPending()

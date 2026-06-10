@@ -48,8 +48,11 @@ struct NotchRootView: View {
             if let pending = state.pending {
                 NudgeCardView(item: pending, onKeep: onKeepPending, onDismiss: onDismissPending)
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .transition(.opacity)
+                    .padding(.top, 4)
+                    .padding(.bottom, 8)
+                    // Slide down out of the notch on copy, and back up into it
+                    // when it retracts.
+                    .transition(.move(edge: .top).combined(with: .opacity))
             } else if state.mode == .expanded {
                 NotchExpandedView(dataStore: dataStore, isDropTargeted: state.isDropTargeted)
                     .padding(.horizontal, 14)

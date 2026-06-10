@@ -3,6 +3,22 @@
     <channel>
         <title>Aura</title>
         <item>
+            <title>1.1.2</title>
+            <pubDate>Wed, 10 Jun 2026 18:16:22 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Snappier capture + auto-update on launch</h2>
+<ul>
+  <li><strong>Checks for updates when you open Aura</strong> — no need to use “Check for Updates…” manually.</li>
+  <li><strong>Tighter card</strong> — less empty space above the keep card.</li>
+  <li><strong>Quick peek</strong> — the card now slides down, lingers ~2.5s, and glides back into the notch. Hover it to keep it around.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.1.2/Aura-1.1.2.dmg" length="10751512" type="application/octet-stream" sparkle:edSignature="kK1isde60d0TofqIB4q3a6xHMoSAFXWu/C51XxF+UFeNhGT/veUE1eYzKFbvG+0yX0acxIAUSyu6eGRHUl62CQ=="/>
+        </item>
+        <item>
             <title>1.1.1</title>
             <pubDate>Wed, 10 Jun 2026 17:56:07 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>

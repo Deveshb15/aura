@@ -24,7 +24,7 @@ struct NotchGeometry {
     static let expandedHeight: CGFloat = 168
     /// The peeking "keep this?" card auto-shown when something is copied.
     static let nudgeWidth: CGFloat = 360
-    static let nudgeHeight: CGFloat = 92
+    static let nudgeHeight: CGFloat = 76
 
     static func current() -> NotchGeometry {
         let screen = notchedScreen() ?? NSScreen.main ?? NSScreen.screens.first!

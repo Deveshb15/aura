@@ -24,6 +24,16 @@ final class SparkleUpdater: ObservableObject {
                                                   userDriverDelegate: nil)
         controller.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
+
+        // Check shortly after launch so updates surface when you open the app —
+        // silent unless an update is actually available (then the standard
+        // Install / Remind Me Later panel appears). Scheduled daily checks
+        // continue on top of this.
+        let updater = controller.updater
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            updater.checkForUpdatesInBackground()
+        }
     }
 
     /// Manual "Check for Updates…" — shows "You're up to date" when current.
