@@ -102,7 +102,9 @@ final class NotchController {
         panel?.setFrame(geometry.windowFrame, display: true)
         panel?.orderFrontRegardless()
         state.collapsedSize = geometry.collapsedSize
-        let mode: NotchInteractiveMode = state.mode == .expanded ? .expanded : .collapsed
+        let mode: NotchInteractiveMode = state.pending != nil
+            ? .nudge
+            : (state.mode == .expanded ? .expanded : .collapsed)
         container?.interactiveRect = geometry.interactiveRect(for: mode)
     }
 
@@ -121,6 +123,17 @@ final class NotchController {
 
     private func handleMouseMoved() {
         let location = NSEvent.mouseLocation
+        // While a keep card is up, hovering it pauses the auto-dismiss; leaving
+        // restarts the countdown. No hover-to-expand until the card is gone.
+        if state.pending != nil {
+            if geometry.nudgeRect.contains(location) {
+                pendingExpiryTask?.cancel()
+                pendingExpiryTask = nil
+            } else if pendingExpiryTask == nil {
+                schedulePendingExpiry()
+            }
+            return
+        }
         switch state.mode {
         case .collapsed:
             if geometry.notchRect.contains(location) {
@@ -162,8 +175,12 @@ final class NotchController {
         cancelExpand()
         cancelCollapse()
         guard state.mode != .expanded else { return }
+        // Opening the recents supersedes a pending card (without keeping it).
+        pendingExpiryTask?.cancel()
+        pendingExpiryTask = nil
         container?.interactiveRect = geometry.interactiveRect(for: .expanded)
         withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
+            state.pending = nil
             state.mode = .expanded
         }
     }
@@ -187,6 +204,8 @@ final class NotchController {
     }
 
     private func collapse() {
+        // Don't collapse out from under a pending keep card.
+        guard state.pending == nil else { return }
         container?.interactiveRect = geometry.interactiveRect(for: .collapsed)
         withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
             state.mode = .collapsed
@@ -196,22 +215,29 @@ final class NotchController {
 
     // MARK: - Copy → bounce + pending keep
 
-    /// A new clipboard capture: bounce the notch and arm it as "pending" for a
-    /// few seconds. No card is shown — the user hovers the notch to keep it.
+    /// A new clipboard capture: slide a "keep this?" card down from the notch
+    /// automatically and arm it for a few seconds. Keep it, dismiss it, or just
+    /// ignore it (it retracts on its own). Hovering the card pauses the timer.
     func handleCopy(_ candidate: CaptureCandidate) {
-        state.pending = NudgeItem(candidate: candidate, preview: Self.preview(for: candidate))
-        state.bounceTrigger &+= 1
+        cancelExpand()
+        cancelCollapse()
+        let nudge = NudgeItem(candidate: candidate, preview: Self.preview(for: candidate))
+        container?.interactiveRect = geometry.interactiveRect(for: .nudge)
         NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.74)) {
+            state.mode = .collapsed
+            state.pending = nudge
+        }
         schedulePendingExpiry()
     }
 
     private func schedulePendingExpiry() {
         pendingExpiryTask?.cancel()
         pendingExpiryTask = Task { [weak self] in
-            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            try? await Task.sleep(nanoseconds: 6_000_000_000)
             guard let self, !Task.isCancelled else { return }
             self.pendingExpiryTask = nil
-            withAnimation(.easeOut(duration: 0.2)) { self.state.pending = nil }
+            self.dismissPending()
         }
     }
 
@@ -224,7 +250,11 @@ final class NotchController {
     func dismissPending() {
         pendingExpiryTask?.cancel()
         pendingExpiryTask = nil
-        withAnimation(.easeOut(duration: 0.2)) { state.pending = nil }
+        container?.interactiveRect = geometry.interactiveRect(for: .collapsed)
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+            state.pending = nil
+            state.mode = .collapsed
+        }
     }
 
     // MARK: - Helpers

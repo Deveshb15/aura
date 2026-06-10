@@ -3,6 +3,18 @@
     <channel>
         <title>Aura</title>
         <item>
+            <title>1.1.1</title>
+            <pubDate>Wed, 10 Jun 2026 17:56:07 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>5</sparkle:version>
+            <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>The Keep card is back</h2>
+<p>When you copy something, the notch now slides a little <strong>“keep this?”</strong> card down automatically — with a clear <strong>Keep</strong> button — instead of just nudging. Click <strong>Keep</strong> to save it, ✕ to dismiss, or ignore it and it quietly retracts. Hovering the card pauses the countdown.</p>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.1.1/Aura-1.1.1.dmg" length="10742063" type="application/octet-stream" sparkle:edSignature="phATA/g3+QkluOuhtJUUQ2q4z24s9wKT/zyNtxkEJrFyN5c6FEjpqmEjZ13No2JzqQBjM267KX6REvoXLZNsDQ=="/>
+        </item>
+        <item>
             <title>1.1.0</title>
             <pubDate>Wed, 10 Jun 2026 17:13:44 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>

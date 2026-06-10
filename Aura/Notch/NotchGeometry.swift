@@ -5,6 +5,8 @@ import AppKit
 enum NotchInteractiveMode {
     case collapsed
     case expanded
+    /// A just-copied item is peeking as a card with a Keep button.
+    case nudge
 }
 
 /// Computes the FIXED notch window frame plus the global-coordinate hover zones.
@@ -20,8 +22,9 @@ struct NotchGeometry {
     static let windowHeight: CGFloat = 420
     static let expandedWidth: CGFloat = 560
     static let expandedHeight: CGFloat = 168
-    /// Extra height the expanded panel takes when the "keep" chip is shown.
-    static let chipAllowance: CGFloat = 62
+    /// The peeking "keep this?" card auto-shown when something is copied.
+    static let nudgeWidth: CGFloat = 360
+    static let nudgeHeight: CGFloat = 92
 
     static func current() -> NotchGeometry {
         let screen = notchedScreen() ?? NSScreen.main ?? NSScreen.screens.first!
@@ -77,11 +80,15 @@ struct NotchGeometry {
     /// notchRect is what makes it stay open instead of flickering. The panel
     /// content sits BELOW the physical notch, so the zone height includes the
     /// notch inset.
-    /// Tall enough to also cover the optional "keep" chip at the top of the
-    /// expanded panel, so hovering the chip never falls outside the close zone.
     var openedRect: NSRect {
         globalRect(width: Self.expandedWidth + 24,
-                   height: notchHeight + Self.expandedHeight + Self.chipAllowance + 12)
+                   height: notchHeight + Self.expandedHeight + 12)
+    }
+
+    /// Keep-alive zone for the peeking copy card: hovering inside it pauses the
+    /// auto-dismiss countdown; leaving restarts it. Offset below the notch.
+    var nudgeRect: NSRect {
+        globalRect(width: Self.nudgeWidth + 24, height: notchHeight + Self.nudgeHeight + 16)
     }
 
     /// The interactive rect in the container VIEW's coordinates (bottom-left
@@ -93,7 +100,10 @@ struct NotchGeometry {
             size = CGSize(width: max(notchWidth, 180) + 16, height: notchHeight + 8)
         case .expanded:
             size = CGSize(width: Self.expandedWidth + 24,
-                          height: notchHeight + Self.expandedHeight + Self.chipAllowance + 12)
+                          height: notchHeight + Self.expandedHeight + 12)
+        case .nudge:
+            size = CGSize(width: Self.nudgeWidth + 24,
+                          height: notchHeight + Self.nudgeHeight + 16)
         }
         let viewWidth = screen.frame.width
         return CGRect(x: (viewWidth - size.width) / 2,

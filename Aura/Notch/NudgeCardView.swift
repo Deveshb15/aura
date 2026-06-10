@@ -1,28 +1,26 @@
 import SwiftUI
 
-/// A slim "keep this?" chip shown at the top of the expanded notch panel when a
-/// just-copied item is pending. Click Keep to save it; ✕ to dismiss. (Replaces
-/// the old auto-popping card — copies now just bounce the notch.)
-struct KeepChipView: View {
-    static let height: CGFloat = 50
-
+/// The peeking card that slides down from the notch the moment something is
+/// copied — a small preview with a **Keep** button. Click Keep to save it; click
+/// ✕ (or just ignore it) and it retracts after a few seconds without saving.
+struct NudgeCardView: View {
     let item: NudgeItem
     let onKeep: () -> Void
     let onDismiss: () -> Void
 
     var body: some View {
-        HStack(spacing: 9) {
+        HStack(spacing: 11) {
             thumb
-                .frame(width: 30, height: 30)
-                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(title)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 12.5, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
                 Text(subtitle)
-                    .font(.system(size: 10))
+                    .font(.system(size: 11))
                     .foregroundStyle(.white.opacity(0.55))
                     .lineLimit(1)
                     .truncationMode(.middle)
@@ -31,30 +29,36 @@ struct KeepChipView: View {
             Spacer(minLength: 6)
 
             Button(action: onKeep) {
-                HStack(spacing: 4) {
-                    Image(systemName: "tray.and.arrow.down.fill").font(.system(size: 10, weight: .semibold))
-                    Text("Keep").font(.system(size: 11, weight: .semibold))
+                HStack(spacing: 5) {
+                    Image(systemName: "tray.and.arrow.down.fill").font(.system(size: 11, weight: .semibold))
+                    Text("Keep").font(.system(size: 12, weight: .semibold))
                 }
                 .foregroundStyle(.black)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
                 .background(.white, in: Capsule())
             }
             .buttonStyle(.plain)
 
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(.white.opacity(0.6))
-                    .frame(width: 22, height: 22)
+                    .frame(width: 24, height: 24)
                     .background(.white.opacity(0.08), in: Circle())
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 10)
-        .frame(height: Self.height)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.07)))
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: 64)
+        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(.white.opacity(0.08)))
+        // The whole card is a keep target (the ✕ button dismisses first); this
+        // also stops a card tap from falling through to "open library".
+        .contentShape(Rectangle())
+        .onTapGesture { onKeep() }
+        .help("Click to keep")
     }
 
     @ViewBuilder private var thumb: some View {
@@ -66,16 +70,16 @@ struct KeepChipView: View {
         default:
             ZStack {
                 Color.white.opacity(0.12)
-                Image(systemName: icon).font(.system(size: 12)).foregroundStyle(.white.opacity(0.85))
+                Image(systemName: icon).font(.system(size: 15)).foregroundStyle(.white.opacity(0.85))
             }
         }
     }
 
     private var title: String {
         switch item.preview {
-        case .text: return "Keep text"
-        case .url: return "Keep link"
-        case .image: return "Keep image"
+        case .text: return "Text copied"
+        case .url: return "Link copied"
+        case .image: return "Image copied"
         case .file(let name): return name
         case .color(let hex): return hex
         }
