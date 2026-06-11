@@ -7,10 +7,10 @@ struct MenuBarContent: View {
     @EnvironmentObject private var updater: SparkleUpdater
 
     var body: some View {
-        Button("New Note  ⌥⌘N") {
+        Button("New Note  ⌃⌘N") {
             composeLauncher.compose?()
         }
-        // No .keyboardShortcut here: ⌥⌘N is handled by the global Carbon hotkey.
+        // No .keyboardShortcut here: ⌃⌘N is handled by the global Carbon hotkey.
         // Binding it again would double-fire and toggle compose to a no-op.
 
         Button("Open Library") {

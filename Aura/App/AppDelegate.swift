@@ -43,9 +43,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             launcher.open?()
         }
 
-        // Global hotkey ⌥⌘N — open quick-note compose mode in the notch.
+        // Global hotkey ⌃⌘N — open quick-note compose mode in the notch.
+        // Control+Command+letter is rarely used by apps, so this global hotkey
+        // fires reliably everywhere (unlike ⌥⌘N / ⇧⌘N which apps bind heavily).
         composeHotKey = GlobalHotKey(keyCode: UInt32(kVK_ANSI_N),
-                                     modifiers: UInt32(cmdKey | optionKey),
+                                     modifiers: UInt32(cmdKey | controlKey),
                                      id: 2) { [weak self] in
             self?.notchController?.enterCompose()
         }
