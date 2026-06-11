@@ -48,8 +48,9 @@
 	<string>twVxJcgKa1TiNb9AlIj/hia3ts2AD98hfGyZF7H0qJ4=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
+	<!-- Check twice a day (12h) so updates surface promptly. -->
 	<key>SUScheduledCheckInterval</key>
-	<integer>86400</integer>
+	<integer>43200</integer>
 	<!-- Never install silently — always show the Install / Remind Me Later / Skip panel. -->
 	<key>SUAutomaticallyUpdate</key>
 	<false/>
