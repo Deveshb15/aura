@@ -20,7 +20,7 @@ final class AssetStore {
         let support = try AppDatabase.supportDirectory()
         baseURL = support.appendingPathComponent("Assets", isDirectory: true)
         let fm = FileManager.default
-        for subdir in ["img", "file", "og", "favicon"] {
+        for subdir in ["img", "file", "og", "favicon", "logo"] {
             try fm.createDirectory(at: baseURL.appendingPathComponent(subdir), withIntermediateDirectories: true)
         }
     }
@@ -74,7 +74,7 @@ final class AssetStore {
     /// Wipes every stored asset (used by "Clear All Data").
     func removeAllAssets() {
         let fm = FileManager.default
-        for subdir in ["img", "file", "og", "favicon"] {
+        for subdir in ["img", "file", "og", "favicon", "logo"] {
             let dir = baseURL.appendingPathComponent(subdir)
             try? fm.removeItem(at: dir)
             try? fm.createDirectory(at: dir, withIntermediateDirectories: true)

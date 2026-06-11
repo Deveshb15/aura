@@ -34,6 +34,8 @@ final class AppEnvironment {
             let assetStore = try AssetStore()
             let dbPool = try AppDatabase.open()
             self.assetStore = assetStore
+            // Point the source-logo cache at the shared Assets/ directory.
+            LogoService.configure(baseURL: assetStore.baseURL)
             self.dbPool = dbPool
             self.dataStore = DataStore(dbPool: dbPool, assetStore: assetStore)
             self.clipboardWatcher = ClipboardWatcher()

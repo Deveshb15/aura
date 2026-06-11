@@ -68,7 +68,8 @@ final class NotchController {
             },
             onOpenLibrary: { [weak self] in self?.onOpenLibrary?() },
             onSaveCompose: { [weak self] text in self?.saveCompose(text: text) },
-            onAddNote: { [weak self] in self?.enterCompose() }
+            onAddNote: { [weak self] in self?.enterCompose() },
+            onBackCompose: { [weak self] in self?.exitCompose() }
         )
         let hosting = NSHostingView(rootView: root)
         hosting.frame = container.bounds

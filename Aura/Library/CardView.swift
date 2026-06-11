@@ -13,13 +13,15 @@ struct CardView: View {
     private let radius: CGFloat = 18
 
     var body: some View {
-        cardContent
+        VStack(spacing: 0) {
+            cardContent
+            CardMetaFooter(item: item)
+        }
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(AuraTheme.surface, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(AuraTheme.hairline))
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(alignment: .topTrailing) { actionBar }
-            .overlay(alignment: .bottomTrailing) { if hovering { ResizeGrip() } }
             .shadow(color: .black.opacity(hovering ? 0.35 : 0.18), radius: hovering ? 14 : 6, y: 4)
             .scaleEffect(hovering ? 1.012 : 1)
             .animation(.easeOut(duration: 0.16), value: hovering)
@@ -130,22 +132,3 @@ struct CardActionButton: View {
     }
 }
 
-/// Decorative bottom-right resize grip (three diagonal hatches), matching the
-/// mockup. Purely cosmetic — the masonry grid stays automatic.
-struct ResizeGrip: View {
-    var body: some View {
-        Canvas { ctx, size in
-            let shading = GraphicsContext.Shading.color(.white.opacity(0.22))
-            for i in 0..<3 {
-                let offset = CGFloat(i) * 4 + 1
-                var path = Path()
-                path.move(to: CGPoint(x: size.width - offset, y: size.height))
-                path.addLine(to: CGPoint(x: size.width, y: size.height - offset))
-                ctx.stroke(path, with: shading, lineWidth: 1.2)
-            }
-        }
-        .frame(width: 11, height: 11)
-        .padding(9)
-        .allowsHitTesting(false)
-    }
-}

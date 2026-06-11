@@ -16,11 +16,6 @@ struct TextCardView: View {
             if let link = item.linkURL {
                 LinkEmbedView(item: item, url: link, heroURL: heroURL, faviconURL: faviconURL)
             }
-            if let app = item.sourceApp {
-                Text(app)
-                    .font(.system(size: 11))
-                    .foregroundStyle(AuraTheme.textTertiary)
-            }
         }
         .padding(20)
     }

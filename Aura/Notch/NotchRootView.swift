@@ -16,6 +16,7 @@ struct NotchRootView: View {
     let onOpenLibrary: () -> Void
     let onSaveCompose: (String) -> Void
     let onAddNote: () -> Void
+    let onBackCompose: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -72,7 +73,8 @@ struct NotchRootView: View {
             } else if state.mode == .compose {
                 ComposeView(
                     text: $state.composeText,
-                    onSave: onSaveCompose
+                    onSave: onSaveCompose,
+                    onBack: onBackCompose
                 )
                 .padding(.horizontal, 14)
                 .padding(.top, 2)

@@ -68,20 +68,67 @@ struct NotchExpandedView: View {
     }
 }
 
-/// A small recent-item tile inside the notch. Tap copies it back to the clipboard.
+/// A small recent-item tile inside the notch. Tap copies/opens it; hovering
+/// blurs the preview and reveals explicit Copy / Open buttons.
 struct NotchMiniCard: View {
     let item: Item
     let dataStore: DataStore
+    @State private var hovering = false
 
     var body: some View {
-        content
-            .frame(width: 96, height: 110)
-            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.07)))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .contentShape(Rectangle())
-            .onTapGesture { dataStore.primaryAction(item) }
-            .help(item.canOpen ? "Click to open" : "Click to copy")
+        ZStack {
+            content
+                .frame(width: 96, height: 110)
+                .clipped()
+                // Slightly over-scale while blurring so the soft edge stays
+                // outside the rounded clip instead of fading to the card bg.
+                .blur(radius: hovering ? 7 : 0)
+                .scaleEffect(hovering ? 1.06 : 1)
+
+            if hovering {
+                Color.black.opacity(0.5)
+                HStack(spacing: 8) {
+                    NotchMiniButton(systemName: "doc.on.doc", help: "Copy") {
+                        dataStore.copyToClipboard(item)
+                    }
+                    if item.canOpen {
+                        NotchMiniButton(systemName: "arrow.up.forward.app", help: "Open") {
+                            dataStore.open(item)
+                        }
+                    }
+                }
+            }
+        }
+        .frame(width: 96, height: 110)
+        .overlay(alignment: .topLeading) { if !hovering { typeBadge } }
+        .overlay(alignment: .bottomTrailing) { if !hovering { timestampBadge } }
+        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.07)))
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .contentShape(Rectangle())
+        .onTapGesture { dataStore.primaryAction(item) }
+        .onHover { hovering = $0 }
+        .animation(.easeOut(duration: 0.14), value: hovering)
+        .help(item.canOpen ? "Click to open" : "Click to copy")
+    }
+
+    private var typeBadge: some View {
+        Image(systemName: item.typeSymbol)
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundStyle(.white.opacity(0.95))
+            .frame(width: 18, height: 18)
+            .background(.black.opacity(0.4), in: Circle())
+            .padding(5)
+    }
+
+    private var timestampBadge: some View {
+        Text(RelativeTime.compact(item.createdAt))
+            .font(.system(size: 9, weight: .medium))
+            .foregroundStyle(.white.opacity(0.85))
+            .padding(.horizontal, 5)
+            .padding(.vertical, 2)
+            .background(.black.opacity(0.4), in: Capsule())
+            .padding(5)
     }
 
     @ViewBuilder private var content: some View {
@@ -96,7 +143,7 @@ struct NotchMiniCard: View {
             if let image = DiskImage.load(dataStore.fileURL(forRelativePath: item.ogImagePath)) {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
             } else {
-                centeredIcon(urlIcon, caption: item.host ?? "Link")
+                centeredIcon(item.subtype.symbol, caption: item.host ?? "Link")
             }
         case .color:
             Color(hex: item.colorHex ?? "") ?? Color.gray
@@ -133,12 +180,24 @@ struct NotchMiniCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private var urlIcon: String {
-        switch item.subtype {
-        case .youtube: return "play.rectangle.fill"
-        case .github: return "chevron.left.forwardslash.chevron.right"
-        case .twitter: return "at"
-        default: return "link"
+}
+
+/// A compact circular action button shown over a blurred notch tile on hover.
+private struct NotchMiniButton: View {
+    let systemName: String
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 26, height: 26)
+                .background(.black.opacity(0.55), in: Circle())
+                .overlay(Circle().strokeBorder(.white.opacity(0.18)))
         }
+        .buttonStyle(.plain)
+        .help(help)
     }
 }

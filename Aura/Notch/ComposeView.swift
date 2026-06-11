@@ -6,6 +6,7 @@ import SwiftUI
 struct ComposeView: View {
     @Binding var text: String
     let onSave: (String) -> Void
+    let onBack: () -> Void
 
     @FocusState private var isFocused: Bool
 
@@ -14,7 +15,18 @@ struct ComposeView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: 6) {
+            // ── Back button ───────────────────────────────────────────────────
+            Button(action: onBack) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .frame(width: 22, height: 22)
+                    .background(.white.opacity(0.06), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .help("Back")
+
             // ── Text input ────────────────────────────────────────────────────
             ZStack(alignment: .topLeading) {
                 if text.isEmpty {
