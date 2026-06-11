@@ -3,6 +3,27 @@
     <channel>
         <title>Aura</title>
         <item>
+            <title>1.5.0</title>
+            <pubDate>Fri, 12 Jun 2026 00:13:41 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>11</sparkle:version>
+            <sparkle:shortVersionString>1.5.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Logos for every source</h2>
+<p>Saved items now show the real logo of wherever they came from — <strong>any app</strong>, not just a handful. Aura recognises the source (Slack, Postman, Wispr Flow, Notion…), finds its logo on the fly, and falls back to the app's own icon when needed. Every logo is cached, so it's instant after the first time.</p>
+<h2>Cleaner notch</h2>
+<ul>
+  <li>Recent tiles drop the corner type icon — just your content and a timestamp, with <strong>Copy / Open</strong> on hover.</li>
+  <li>The quick-note composer's back button and spacing got a polish.</li>
+</ul>
+<h2>Under the hood</h2>
+<ul>
+  <li>Aura now checks for updates twice a day, so new versions reach you sooner.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.5.0/Aura-1.5.0.dmg" length="10932515" type="application/octet-stream" sparkle:edSignature="hdxwWfPPQD0XxWeugSTRzMTz2z2sMKUOMNBo+0pQo843KBkfk+QjZ32XUjB5ojlZAxnlJrNUCsycQ3blj4kwCg=="/>
+        </item>
+        <item>
             <title>1.4.0</title>
             <pubDate>Thu, 11 Jun 2026 23:41:47 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -73,22 +94,6 @@
 <p>The keep card now drops <strong>straight down</strong> out of the notch, holds still for ~2.5 seconds, and slides straight back up — no more rubber-band bounce or stretch.</p>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.1.3/Aura-1.1.3.dmg" length="10750706" type="application/octet-stream" sparkle:edSignature="vUedk7G88hGItDrF1rr9lX/sAF+WwmCMzoxFZjeVo+dcM+byyW0nHbgnV1QPHoHsLNw5P2gqNAmccI4t+2cKAQ=="/>
-        </item>
-        <item>
-            <title>1.1.2</title>
-            <pubDate>Wed, 10 Jun 2026 18:16:22 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>6</sparkle:version>
-            <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>Snappier capture + auto-update on launch</h2>
-<ul>
-  <li><strong>Checks for updates when you open Aura</strong> — no need to use “Check for Updates…” manually.</li>
-  <li><strong>Tighter card</strong> — less empty space above the keep card.</li>
-  <li><strong>Quick peek</strong> — the card now slides down, lingers ~2.5s, and glides back into the notch. Hover it to keep it around.</li>
-</ul>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.1.2/Aura-1.1.2.dmg" length="10751512" type="application/octet-stream" sparkle:edSignature="kK1isde60d0TofqIB4q3a6xHMoSAFXWu/C51XxF+UFeNhGT/veUE1eYzKFbvG+0yX0acxIAUSyu6eGRHUl62CQ=="/>
         </item>
     </channel>
 </rss>
