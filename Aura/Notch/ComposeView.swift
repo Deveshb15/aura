@@ -15,7 +15,7 @@ struct ComposeView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 16) {
             // ── Back button ───────────────────────────────────────────────────
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
@@ -26,6 +26,7 @@ struct ComposeView: View {
             }
             .buttonStyle(.plain)
             .help("Back")
+            .padding(.leading, -8)   // sit closer to the panel edge, left of the text
 
             // ── Text input ────────────────────────────────────────────────────
             ZStack(alignment: .topLeading) {
