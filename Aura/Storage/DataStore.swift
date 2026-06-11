@@ -34,6 +34,7 @@ final class DataStore {
             await self?.semanticIndex.reload()
             await self?.backfillPending()
             await self?.backfillSearchIndex()
+            await self?.backfillImageLabels()
         }
     }
 
@@ -246,6 +247,10 @@ final class DataStore {
     /// keywords. Re-fetches the item first so it sees fields written by
     /// `enrichLink`/`enrichFile`, and updates only the `extractedText` column to
     /// avoid clobbering those concurrent writers.
+    /// Bump when enrichment gains a new extractor, so already-embedded items
+    /// get re-enriched once by the matching backfill (stamped in sourceHash).
+    static let enrichVersion = "enrich-v2"   // v2 = OCR + image classification
+
     func enrichForSearch(itemID: String) async {
         guard let item = try? await dbPool.read({ db in try Item.fetchOne(db, key: itemID) }) else { return }
 
@@ -266,7 +271,8 @@ final class DataStore {
         guard let vector = await EmbeddingService.shared.embed(enriched.searchText) else { return }
 
         let record = EmbeddingRecord(itemId: itemID, vector: vector,
-                                     model: EmbeddingService.modelIdentifier, sourceHash: nil)
+                                     model: EmbeddingService.modelIdentifier,
+                                     sourceHash: Self.enrichVersion)
         try? await dbPool.write { db in try record.save(db) }
         await semanticIndex.upsert(itemId: itemID, vector: vector)
     }
@@ -278,7 +284,17 @@ final class DataStore {
         case .image:
             guard let path = item.assetPath else { return nil }
             let url = assetStore.absoluteURL(for: path)
-            return await Task.detached { OCRService.recognizeText(in: url) }.value
+            // Two extractors: OCR reads the text IN the image (screenshots,
+            // memes); classification names what the image IS (dog, beach,
+            // food), so photos without any text become searchable too.
+            return await Task.detached {
+                let ocr = OCRService.recognizeText(in: url)
+                let labels = ImageClassifierService.labels(for: url)
+                var parts: [String] = []
+                if let ocr { parts.append(ocr) }
+                if let labels { parts.append("Looks like: \(labels)") }
+                return parts.isEmpty ? nil : parts.joined(separator: "\n")
+            }.value
 
         case .file:
             guard let path = item.assetPath else { return nil }
@@ -335,10 +351,33 @@ final class DataStore {
         guard !pending.isEmpty else { return }
         for item in pending {
             guard let vector = await EmbeddingService.shared.embed(item.searchText) else { continue }
+            // sourceHash stays nil: this cheap pass runs no extractors, so the
+            // image-label backfill below still owes these items a full pass.
             let record = EmbeddingRecord(itemId: item.id, vector: vector,
                                          model: EmbeddingService.modelIdentifier, sourceHash: nil)
             try? await dbPool.write { db in try record.save(db) }
         }
+        await semanticIndex.reload()
+    }
+
+    /// One-time re-enrichment of images embedded before classification existed
+    /// (sourceHash missing or from an older enrich generation). enrichForSearch
+    /// rewrites extractedText (OCR + labels), re-embeds, and stamps the current
+    /// version — so each image is touched once, ever. ~50–150 ms per image,
+    /// capped per launch so a big vault spreads over a few launches.
+    private func backfillImageLabels() async {
+        let stale: [String] = (try? await dbPool.read { db in
+            try String.fetchAll(db, sql: """
+                SELECT item.id FROM item
+                JOIN embedding ON embedding.itemId = item.id
+                WHERE item.type = 'image'
+                  AND (embedding.sourceHash IS NULL OR embedding.sourceHash <> ?)
+                ORDER BY item.createdAt DESC
+                LIMIT 100
+                """, arguments: [Self.enrichVersion])
+        }) ?? []
+        guard !stale.isEmpty else { return }
+        for id in stale { await enrichForSearch(itemID: id) }
         await semanticIndex.reload()
     }
 
