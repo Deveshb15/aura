@@ -50,10 +50,26 @@ enum LinkMetadataService {
     /// Fetches the page and extracts its readable body text, for the search
     /// index. Video hosts are skipped — their "body" is JS chrome, and their
     /// title/description already come from oEmbed (see `fetch`).
+    ///
+    /// Two passes: a cheap static fetch first; if that yields no real article
+    /// (JS-rendered SPAs like Notion serve a near-empty shell to plain GETs),
+    /// render the page in an offscreen WKWebView and extract from the live DOM.
     static func fetchArticleText(url: URL) async -> String? {
         guard !URLClassifier.subtype(for: url).isVideo else { return nil }
-        guard let html = await fetchHTML(url: url) else { return nil }
-        return ArticleExtractor.extractText(fromHTML: html, url: url)
+
+        var staticText: String?
+        if let html = await fetchHTML(url: url) {
+            staticText = ArticleExtractor.extractText(fromHTML: html, url: url)
+        }
+        // A real article comfortably clears this; a JS shell or cookie banner
+        // doesn't. Only then is the heavyweight renderer worth spinning up.
+        if let staticText, staticText.count >= 200 { return staticText }
+
+        guard let rendered = await WebPageRenderer.shared.renderHTML(url: url),
+              let renderedText = ArticleExtractor.extractText(fromHTML: rendered, url: url) else {
+            return staticText
+        }
+        return renderedText.count >= (staticText?.count ?? 0) ? renderedText : staticText
     }
 
     // MARK: - LinkPresentation
