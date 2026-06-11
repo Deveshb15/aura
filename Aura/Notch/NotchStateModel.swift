@@ -14,9 +14,13 @@ final class NotchStateModel {
     var mode: Mode = .collapsed
     var isDropTargeted = false
 
-    /// A just-copied item awaiting "keep" — auto-popped as a card that slides
-    /// down from the notch (no hover required). Keep it or it retracts on its own.
+    /// A just-copied item awaiting "keep" — auto-popped as a card from the notch.
     var pending: NudgeItem?
+
+    /// Controls the opacity of the card content independently from the panel
+    /// size, so the sequence is: panel expands → content fades in … content
+    /// fades out → panel collapses (never the other way around).
+    var showPendingContent: Bool = false
 
     /// The collapsed panel size (≈ the physical notch), kept in sync by the
     /// controller so the SwiftUI panel can size itself reactively.

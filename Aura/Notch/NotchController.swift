@@ -175,9 +175,11 @@ final class NotchController {
         cancelExpand()
         cancelCollapse()
         guard state.mode != .expanded else { return }
-        // Opening the recents supersedes a pending card (without keeping it).
         pendingExpiryTask?.cancel()
         pendingExpiryTask = nil
+        // Instantly hide card content before switching to expanded — no fade needed
+        // since the whole panel is about to change shape anyway.
+        state.showPendingContent = false
         container?.interactiveRect = geometry.interactiveRect(for: .expanded)
         withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
             state.pending = nil
@@ -224,9 +226,14 @@ final class NotchController {
         let nudge = NudgeItem(candidate: candidate, preview: Self.preview(for: candidate))
         container?.interactiveRect = geometry.interactiveRect(for: .nudge)
         NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
-        withAnimation(.spring(response: 0.36, dampingFraction: 1.0)) {
-            state.mode = .collapsed
-            state.pending = nudge
+        // Step 1: panel expands (content invisible — view's animation modifier handles
+        // the size change via state.pending?.id).
+        state.showPendingContent = false
+        state.mode = .collapsed
+        state.pending = nudge
+        // Step 2: once the panel has started opening, fade the content in.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { [weak self] in
+            self?.state.showPendingContent = true
         }
         schedulePendingExpiry()
     }
@@ -250,10 +257,17 @@ final class NotchController {
     func dismissPending() {
         pendingExpiryTask?.cancel()
         pendingExpiryTask = nil
-        container?.interactiveRect = geometry.interactiveRect(for: .collapsed)
-        withAnimation(.spring(response: 0.32, dampingFraction: 1.0)) {
-            state.pending = nil
-            state.mode = .collapsed
+        // Phase 1: fade out the card content (view's .animation modifier fires).
+        let dismissedId = state.pending?.id
+        state.showPendingContent = false
+        // Phase 2: collapse the panel after the fade finishes (~0.22 s).
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) { [weak self] in
+            guard let self else { return }
+            // Guard against a new capture arriving during the fade window.
+            guard self.state.pending?.id == dismissedId else { return }
+            self.container?.interactiveRect = self.geometry.interactiveRect(for: .collapsed)
+            self.state.pending = nil
+            self.state.mode = .collapsed
         }
     }
 

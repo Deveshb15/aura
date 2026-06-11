@@ -29,9 +29,9 @@ struct NotchRootView: View {
             .background(NotchShape().fill(Color.black))
             .overlay(NotchShape().stroke(Color.white.opacity(0.08), lineWidth: 0.5))
             .clipShape(NotchShape())
-            // Critically damped (dampingFraction 1.0) = a clean slide with NO
-            // overshoot/rubber-band — the card just drops down and retracts.
-            .animation(.spring(response: 0.36, dampingFraction: 1.0), value: state.pending?.id)
+            // Panel size springs between collapsed / nudge / expanded.
+            // Critically damped on pending so the notch grows/shrinks cleanly.
+            .animation(.spring(response: 0.34, dampingFraction: 1.0), value: state.pending == nil)
             .animation(.spring(response: 0.5, dampingFraction: 0.86), value: state.mode)
             .onDrop(of: DropReceiver.acceptedTypes, isTargeted: dropBinding) { providers in
                 DropReceiver.handle(providers) { candidate in
@@ -51,9 +51,12 @@ struct NotchRootView: View {
                     .padding(.horizontal, 12)
                     .padding(.top, 4)
                     .padding(.bottom, 8)
-                    // Pure vertical slide: drops straight down out of the notch
-                    // and slides straight back up into it (no fade, no bounce).
-                    .transition(.move(edge: .top))
+                    // Panel size is driven by `pending != nil`; content opacity is
+                    // driven separately so the sequence is always:
+                    //   show → panel expands first, then content fades in
+                    //   hide → content fades out first, then panel collapses
+                    .opacity(state.showPendingContent ? 1 : 0)
+                    .animation(.easeInOut(duration: 0.22), value: state.showPendingContent)
             } else if state.mode == .expanded {
                 NotchExpandedView(dataStore: dataStore, isDropTargeted: state.isDropTargeted)
                     .padding(.horizontal, 14)
