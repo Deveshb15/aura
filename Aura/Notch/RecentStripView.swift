@@ -100,9 +100,6 @@ struct NotchMiniCard: View {
             }
         }
         .frame(width: 96, height: 110)
-        // The type badge only earns its place where the tile has no visual cue
-        // (text). Over a photo / file thumb / link hero it's just clutter.
-        .overlay(alignment: .topLeading) { if !hovering && !hasImagePreview { typeBadge } }
         .overlay(alignment: .bottomTrailing) { if !hovering { timestampBadge } }
         .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.07)))
@@ -112,28 +109,6 @@ struct NotchMiniCard: View {
         .onHover { hovering = $0 }
         .animation(.easeOut(duration: 0.14), value: hovering)
         .help(item.canOpen ? "Click to open" : "Click to copy")
-    }
-
-    /// True when the tile renders an actual image (photo, file thumbnail, or
-    /// link hero) rather than a text/icon fallback.
-    private var hasImagePreview: Bool {
-        switch item.itemType {
-        case .image, .file:
-            return item.thumbnail != nil
-        case .url:
-            return DiskImage.load(dataStore.fileURL(forRelativePath: item.ogImagePath)) != nil
-        default:
-            return false
-        }
-    }
-
-    private var typeBadge: some View {
-        Image(systemName: item.typeSymbol)
-            .font(.system(size: 9, weight: .semibold))
-            .foregroundStyle(.white.opacity(0.95))
-            .frame(width: 18, height: 18)
-            .background(.black.opacity(0.4), in: Circle())
-            .padding(5)
     }
 
     private var timestampBadge: some View {
