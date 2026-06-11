@@ -19,7 +19,18 @@ struct LibraryWindowView: View {
 
     var body: some View {
         ZStack(alignment: .top) {
-            AuraTheme.background.ignoresSafeArea()
+            AuraTheme.background
+                .ignoresSafeArea()
+                // Clicking empty space dismisses the search caret (macOS text
+                // fields otherwise keep focus forever); an empty query also
+                // collapses the field back to the placeholder hero.
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    searchFocused = false
+                    if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        editingSearch = false
+                    }
+                }
 
             VStack(spacing: 0) {
                 wordmark
@@ -67,18 +78,27 @@ struct LibraryWindowView: View {
     @ViewBuilder private var searchHero: some View {
         Group {
             if editingSearch {
-                TextField("", text: $query)
-                    .textFieldStyle(.plain)
-                    .foregroundStyle(AuraTheme.textPrimary)
-                    .tint(AuraTheme.accentDot)
-                    .focused($searchFocused)
-                    .onAppear { searchFocused = true }
-                    .onSubmit { askMemory() }
-                    .onChange(of: searchFocused) { _, focused in
-                        if !focused && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            editingSearch = false
-                        }
+                // Keep the placeholder visible behind the caret while the field
+                // is empty, so an idle click never leaves a blank hero.
+                ZStack(alignment: .leading) {
+                    if query.isEmpty {
+                        Text("Ask your Memory…")
+                            .foregroundStyle(AuraTheme.textSecondary)
+                            .allowsHitTesting(false)
                     }
+                    TextField("", text: $query)
+                        .textFieldStyle(.plain)
+                        .foregroundStyle(AuraTheme.textPrimary)
+                        .tint(AuraTheme.accentDot)
+                        .focused($searchFocused)
+                        .onAppear { searchFocused = true }
+                        .onSubmit { askMemory() }
+                        .onChange(of: searchFocused) { _, focused in
+                            if !focused && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                editingSearch = false
+                            }
+                        }
+                }
             } else {
                 Text(query.isEmpty ? "Ask your Memory…" : query)
                     .foregroundStyle(query.isEmpty ? AuraTheme.textSecondary : AuraTheme.textPrimary)
