@@ -5,6 +5,7 @@ import SwiftUI
 /// resolves the domain's logo via `LogoService` and cross-fades it in.
 struct AsyncLogo: View {
     let domain: String?
+    var appName: String? = nil
     var fallbackFavicon: URL? = nil
     var fallbackSymbol: String = "globe"
     var size: CGFloat = 16
@@ -30,10 +31,16 @@ struct AsyncLogo: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.25, style: .continuous))
-        .task(id: domain) {
+        .task(id: "\(domain ?? "")|\(appName ?? "")") {
             resolved = nil
-            guard let domain else { return }
-            let image = await LogoService.shared.logo(for: domain)
+            let image: NSImage?
+            if let domain {
+                image = await LogoService.shared.logo(for: domain)
+            } else if let appName {
+                image = await LogoService.shared.logo(forAppNamed: appName)
+            } else {
+                image = nil
+            }
             withAnimation(.easeOut(duration: 0.2)) { resolved = image }
         }
     }
@@ -49,6 +56,7 @@ struct SourceBadge: View {
         if let name = item.sourceName {
             HStack(spacing: 5) {
                 AsyncLogo(domain: item.sourceDomain,
+                          appName: item.sourceApp,
                           fallbackFavicon: faviconURL,
                           fallbackSymbol: item.typeSymbol,
                           size: 14)

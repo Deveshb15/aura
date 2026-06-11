@@ -18,10 +18,9 @@ extension Item {
         }
     }
 
-    /// The web domain this item came from, if any — drives the source logo.
-    /// Preference: the page it was copied from, then the link's own host, then
-    /// a known mapping for the source *app* (e.g. "Slack" → slack.com) so
-    /// app-captured items still resolve a brand logo via logo.dev.
+    /// The *web* domain this item came from (the page it was copied from, or the
+    /// link's own host). App sources have no web domain — their logo is resolved
+    /// from the app name by `LogoService.logo(forAppNamed:)`.
     var sourceDomain: String? {
         if let raw = sourceURL, let host = URL(string: raw)?.host, !host.isEmpty {
             return host.replacingOccurrences(of: "www.", with: "")
@@ -29,7 +28,7 @@ extension Item {
         if let host, !host.isEmpty {
             return host.replacingOccurrences(of: "www.", with: "")
         }
-        return AppDomains.domain(for: sourceApp)
+        return nil
     }
 
     /// Human-readable "where this came from": the app name if known, else the
