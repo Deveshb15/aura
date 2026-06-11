@@ -24,6 +24,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.show()
         notchController = controller
 
+        // Let the menu-bar menu open the composer (mirrors libraryLauncher).
+        env.composeLauncher.compose = { [weak controller] in controller?.enterCompose() }
+
         let watcher = env.clipboardWatcher
         watcher.onCandidate = { [weak controller] candidate in
             controller?.handleCopy(candidate)

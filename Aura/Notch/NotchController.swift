@@ -29,6 +29,9 @@ final class NotchController {
     private var screensChangedWork: DispatchWorkItem?
     private var composeKeyMonitor: Any?
     private var composeClickMonitor: Any?
+    private var composeCollapseWork: DispatchWorkItem?
+    /// The app that was frontmost when compose opened, so focus can be returned.
+    private var previousApp: NSRunningApplication?
 
     private let openDwell: TimeInterval = 0.12
     private let closeDelay: TimeInterval = 0.20
@@ -186,7 +189,9 @@ final class NotchController {
     func expand() {
         cancelExpand()
         cancelCollapse()
-        guard state.mode != .expanded else { return }
+        // Never expand recents out from under an open composer (a drag onto the
+        // notch must not clobber a half-typed note or leak its monitors).
+        guard state.mode != .expanded, state.mode != .compose else { return }
         pendingExpiryTask?.cancel()
         pendingExpiryTask = nil
         // Instantly hide card content before switching to expanded — no fade needed
@@ -290,8 +295,16 @@ final class NotchController {
     /// Opens the notch as a quick-note text composer. Pressing ⌥⌘N again
     /// while composing toggles it off (no save). ⌘↩ saves; ⎋ dismisses.
     func enterCompose() {
-        // Toggle: pressing the hotkey again dismisses without saving.
-        if state.mode == .compose { exitCompose(); return }
+        // Mid-exit (fading closed)? Cancel the collapse and re-open cleanly
+        // instead of toggling off into a dead window.
+        if let work = composeCollapseWork {
+            work.cancel()
+            composeCollapseWork = nil
+        } else if state.mode == .compose {
+            // Fully open → the hotkey toggles it off (no save).
+            exitCompose()
+            return
+        }
 
         // Conflict resolution: clear any pending card or recents state.
         if state.pending != nil {
@@ -307,7 +320,15 @@ final class NotchController {
         state.showComposeContent = false
         container?.interactiveRect = geometry.interactiveRect(for: .compose)
 
-        // Make the panel key so keyboard events reach the TextEditor.
+        // Activate so the panel actually receives keyboard input (a background
+        // accessory app's key panel otherwise never gets keystrokes). Remember
+        // the prior app so focus returns there on exit — but never record
+        // ourselves (e.g. when re-opening mid-exit while Aura is frontmost).
+        if let front = NSWorkspace.shared.frontmostApplication,
+           front.bundleIdentifier != Bundle.main.bundleIdentifier {
+            previousApp = front
+        }
+        NSApp.activate(ignoringOtherApps: true)
         panel?.acceptsKeyboard = true
         panel?.makeKeyAndOrderFront(nil)
         NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
@@ -319,18 +340,28 @@ final class NotchController {
         installComposeMonitors()
     }
 
-    /// Fades out compose content then collapses the panel.
+    /// Fades out compose content then collapses the panel, returning keyboard
+    /// focus to whichever app was frontmost before composing.
     func exitCompose() {
-        guard state.mode == .compose else { return }
+        guard state.mode == .compose, composeCollapseWork == nil else { return }
         removeComposeMonitors()
         state.showComposeContent = false    // phase 1: fade out
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) { [weak self] in
-            guard let self, self.state.mode == .compose else { return }
+        let work = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.composeCollapseWork = nil
             self.container?.interactiveRect = self.geometry.interactiveRect(for: .collapsed)
             self.state.mode = .collapsed    // phase 2: panel collapses
             self.panel?.acceptsKeyboard = false
-            self.panel?.resignKey()
+            // Return focus to the app the user was in before composing. Set
+            // acceptsKeyboard = false first so the panel can't re-grab key.
+            if let prev = self.previousApp,
+               prev.bundleIdentifier != Bundle.main.bundleIdentifier {
+                prev.activate()
+            }
+            self.previousApp = nil
         }
+        composeCollapseWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26, execute: work)
     }
 
     /// Saves the composed text (if non-empty) then exits compose mode.
@@ -351,7 +382,13 @@ final class NotchController {
         // SwiftUI's onKeyPress sees them, so we handle shortcuts here.
         composeKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.state.mode == .compose else { return event }
-            if event.keyCode == UInt16(kVK_Return), event.modifierFlags.contains(.command) {
+            let isReturn = event.keyCode == UInt16(kVK_Return)
+                || event.keyCode == UInt16(kVK_ANSI_KeypadEnter)
+            // Return (or ⌘Return) saves; ⇧Return falls through to insert a newline.
+            if isReturn, !event.modifierFlags.contains(.shift) {
+                let empty = self.state.composeText
+                    .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                if empty { return nil }   // nothing to save — swallow, no-op
                 self.saveCompose(text: self.state.composeText)
                 return nil
             }

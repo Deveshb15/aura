@@ -6,7 +6,7 @@ struct AuraApp: App {
 
     var body: some Scene {
         MenuBarExtra {
-            MenuBarContent()
+            MenuBarContent(composeLauncher: appDelegate.env.composeLauncher)
                 .environment(appDelegate.env.dataStore)
                 .environmentObject(appDelegate.env.updater)
         } label: {

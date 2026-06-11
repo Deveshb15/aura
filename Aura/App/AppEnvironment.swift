@@ -9,6 +9,14 @@ final class LibraryLauncher {
     var open: (() -> Void)?
 }
 
+/// Bridges "open the quick-note composer" from a SwiftUI scene (the menu-bar
+/// menu) to the AppKit notch controller. `AppDelegate` fills in `compose` at
+/// launch once the controller exists; the menu just calls it.
+@MainActor
+final class ComposeLauncher {
+    var compose: (() -> Void)?
+}
+
 /// Dependency-injection root: builds the database, store, and services once and
 /// shares the single `DataStore` instance across both surfaces.
 @MainActor
@@ -18,6 +26,7 @@ final class AppEnvironment {
     let dataStore: DataStore
     let clipboardWatcher: ClipboardWatcher
     let libraryLauncher = LibraryLauncher()
+    let composeLauncher = ComposeLauncher()
     let updater = SparkleUpdater()
 
     init() {

@@ -42,9 +42,12 @@ struct ComposeView: View {
 
             // ── Action strip ──────────────────────────────────────────────────
             HStack(spacing: 0) {
-                Text("⌘↩ save")
+                Text("↩ save")
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.28))
+                Text("  ⇧↩ newline")
+                    .font(.system(size: 10.5, weight: .medium, design: .monospaced))
+                    .foregroundStyle(.white.opacity(0.18))
                 Text("  esc dismiss")
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
                     .foregroundStyle(.white.opacity(0.18))
