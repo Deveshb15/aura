@@ -20,10 +20,6 @@ struct CardMetaFooter: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: item.typeSymbol)
-                .font(.system(size: 11, weight: .medium))
-                .frame(width: 14)
-
             if showsSource {
                 SourceBadge(item: item,
                             faviconURL: store.fileURL(forRelativePath: item.faviconPath))

@@ -19,8 +19,9 @@ extension Item {
     }
 
     /// The web domain this item came from, if any — drives the source logo.
-    /// Derived from the page it was copied from, or the link's own host. Never
-    /// the source *app* name (e.g. "Safari"), which is not a domain.
+    /// Preference: the page it was copied from, then the link's own host, then
+    /// a known mapping for the source *app* (e.g. "Slack" → slack.com) so
+    /// app-captured items still resolve a brand logo via logo.dev.
     var sourceDomain: String? {
         if let raw = sourceURL, let host = URL(string: raw)?.host, !host.isEmpty {
             return host.replacingOccurrences(of: "www.", with: "")
@@ -28,7 +29,7 @@ extension Item {
         if let host, !host.isEmpty {
             return host.replacingOccurrences(of: "www.", with: "")
         }
-        return nil
+        return AppDomains.domain(for: sourceApp)
     }
 
     /// Human-readable "where this came from": the app name if known, else the
@@ -36,6 +37,40 @@ extension Item {
     var sourceName: String? {
         sourceApp ?? sourceDomain
     }
+}
+
+/// Best-effort map from a capture's source *app* name to a domain, so items
+/// copied from an app (which carry only an app name, not a URL) still resolve
+/// a brand logo. Unmapped apps simply fall back to the type icon.
+enum AppDomains {
+    static func domain(for app: String?) -> String? {
+        guard let key = app?.lowercased() else { return nil }
+        return map[key]
+    }
+
+    private static let map: [String: String] = [
+        "slack": "slack.com",
+        "brave browser": "brave.com",
+        "google chrome": "google.com", "chrome": "google.com",
+        "safari": "apple.com",
+        "arc": "arc.net",
+        "notion": "notion.so",
+        "firefox": "mozilla.org",
+        "discord": "discord.com",
+        "telegram": "telegram.org",
+        "whatsapp": "whatsapp.com",
+        "spotify": "spotify.com",
+        "microsoft edge": "microsoft.com",
+        "linear": "linear.app",
+        "figma": "figma.com",
+        "x": "x.com", "twitter": "x.com",
+        "cursor": "cursor.com",
+        "obsidian": "obsidian.md",
+        "visual studio code": "code.visualstudio.com", "code": "code.visualstudio.com",
+        "messages": "apple.com", "mail": "apple.com", "notes": "apple.com",
+        "zoom": "zoom.us", "zoom.us": "zoom.us",
+        "iterm2": "iterm2.com",
+    ]
 }
 
 extension URLSubtype {
