@@ -8,7 +8,6 @@ struct LibraryWindowView: View {
     @State private var query = ""
     @State private var selectedTab: ContentTab = .all
     @State private var searchResults: [Item] = []
-    @State private var editingSearch = false
     @FocusState private var searchFocused: Bool
 
     // On-device AI answer (macOS 26+ / Apple Silicon). Streamed on Return.
@@ -21,16 +20,10 @@ struct LibraryWindowView: View {
         ZStack(alignment: .top) {
             AuraTheme.background
                 .ignoresSafeArea()
-                // Clicking empty space dismisses the search caret (macOS text
-                // fields otherwise keep focus forever); an empty query also
-                // collapses the field back to the placeholder hero.
+                // The search hero is always live — clicking anywhere returns the
+                // pink caret to it.
                 .contentShape(Rectangle())
-                .onTapGesture {
-                    searchFocused = false
-                    if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        editingSearch = false
-                    }
-                }
+                .onTapGesture { searchFocused = true }
 
             VStack(spacing: 0) {
                 wordmark
@@ -61,6 +54,8 @@ struct LibraryWindowView: View {
                 clearAnswer()
             }
         }
+        // Switching tabs (or any stray focus change) shouldn't strand the caret.
+        .onChange(of: selectedTab) { _, _ in searchFocused = true }
     }
 
     // MARK: - Header
@@ -72,45 +67,26 @@ struct LibraryWindowView: View {
             .frame(maxWidth: .infinity)
     }
 
-    // The hero doubles as the search field, but the text field is only inserted
-    // (and focused) once tapped — otherwise the window would auto-focus it on
-    // launch and show a blinking caret before the user has clicked anything.
+    // The hero IS the search field, always live: the pink caret is always
+    // present and "Ask your Memory…" shows behind it whenever the query is empty.
     @ViewBuilder private var searchHero: some View {
-        Group {
-            if editingSearch {
-                // Keep the placeholder visible behind the caret while the field
-                // is empty, so an idle click never leaves a blank hero.
-                ZStack(alignment: .leading) {
-                    if query.isEmpty {
-                        Text("Ask your Memory…")
-                            .foregroundStyle(AuraTheme.textSecondary)
-                            .allowsHitTesting(false)
-                    }
-                    TextField("", text: $query)
-                        .textFieldStyle(.plain)
-                        .foregroundStyle(AuraTheme.textPrimary)
-                        .tint(AuraTheme.accentDot)
-                        .focused($searchFocused)
-                        .onAppear { searchFocused = true }
-                        .onSubmit { askMemory() }
-                        .onChange(of: searchFocused) { _, focused in
-                            if !focused && query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                editingSearch = false
-                            }
-                        }
-                }
-            } else {
-                Text(query.isEmpty ? "Ask your Memory…" : query)
-                    .foregroundStyle(query.isEmpty ? AuraTheme.textSecondary : AuraTheme.textPrimary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .onTapGesture { editingSearch = true }
+        ZStack(alignment: .leading) {
+            if query.isEmpty {
+                Text("Ask your Memory…")
+                    .foregroundStyle(AuraTheme.textSecondary)
+                    .allowsHitTesting(false)
             }
+            TextField("", text: $query)
+                .textFieldStyle(.plain)
+                .foregroundStyle(AuraTheme.textPrimary)
+                .tint(AuraTheme.accentDot)   // pink caret
+                .focused($searchFocused)
+                .onSubmit { askMemory() }
         }
         .font(AuraFont.serif(60, .regular, .tall))
         .lineLimit(1)
         .frame(maxWidth: .infinity, alignment: .leading)
+        .onAppear { searchFocused = true }
     }
 
     // MARK: - AI answer
