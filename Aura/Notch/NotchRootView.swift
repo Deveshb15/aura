@@ -14,6 +14,8 @@ struct NotchRootView: View {
     let onDismissPending: () -> Void
     let onDragTargetedChange: (Bool) -> Void
     let onOpenLibrary: () -> Void
+    let onSaveCompose: (String) -> Void
+    let onDismissCompose: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -57,6 +59,17 @@ struct NotchRootView: View {
                     //   hide → content fades out first, then panel collapses
                     .opacity(state.showPendingContent ? 1 : 0)
                     .animation(.easeInOut(duration: 0.22), value: state.showPendingContent)
+            } else if state.mode == .compose {
+                ComposeView(
+                    text: $state.composeText,
+                    onSave: onSaveCompose,
+                    onDismiss: onDismissCompose
+                )
+                .padding(.horizontal, 14)
+                .padding(.top, 8)
+                .padding(.bottom, 10)
+                .opacity(state.showComposeContent ? 1 : 0)
+                .animation(.easeInOut(duration: 0.22), value: state.showComposeContent)
             } else if state.mode == .expanded {
                 NotchExpandedView(dataStore: dataStore, isDropTargeted: state.isDropTargeted)
                     .padding(.horizontal, 14)
@@ -80,6 +93,8 @@ struct NotchRootView: View {
         switch state.mode {
         case .expanded:
             return CGSize(width: NotchGeometry.expandedWidth, height: notchInset + NotchGeometry.expandedHeight)
+        case .compose:
+            return CGSize(width: NotchGeometry.composeWidth, height: notchInset + NotchGeometry.composeHeight)
         case .collapsed:
             return state.collapsedSize
         }

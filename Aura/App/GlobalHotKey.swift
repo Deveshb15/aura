@@ -13,9 +13,10 @@ final class GlobalHotKey {
     /// - Parameters:
     ///   - keyCode: a virtual key code (e.g. `kVK_ANSI_V`).
     ///   - modifiers: Carbon modifier mask (e.g. `cmdKey | optionKey`).
-    init(keyCode: UInt32, modifiers: UInt32, action: @escaping () -> Void) {
+    ///   - id: unique Carbon hotkey ID (must differ across all GlobalHotKey instances).
+    init(keyCode: UInt32, modifiers: UInt32, id: UInt32 = 1, action: @escaping () -> Void) {
         self.action = action
-        install(keyCode: keyCode, modifiers: modifiers)
+        install(keyCode: keyCode, modifiers: modifiers, id: id)
     }
 
     deinit {
@@ -23,7 +24,7 @@ final class GlobalHotKey {
         if let eventHandlerRef { RemoveEventHandler(eventHandlerRef) }
     }
 
-    private func install(keyCode: UInt32, modifiers: UInt32) {
+    private func install(keyCode: UInt32, modifiers: UInt32, id: UInt32 = 1) {
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
                                       eventKind: OSType(kEventHotKeyPressed))
         let selfPtr = Unmanaged.passUnretained(self).toOpaque()
@@ -35,7 +36,7 @@ final class GlobalHotKey {
             return noErr
         }, 1, &eventType, selfPtr, &eventHandlerRef)
 
-        let hotKeyID = EventHotKeyID(signature: OSType(0x41_55_52_41) /* 'AURA' */, id: 1)
+        let hotKeyID = EventHotKeyID(signature: OSType(0x41_55_52_41) /* 'AURA' */, id: id)
         let status = RegisterEventHotKey(keyCode, modifiers, hotKeyID,
                                          GetApplicationEventTarget(), 0, &hotKeyRef)
         if status != noErr {

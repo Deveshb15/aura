@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let env = AppEnvironment()
     private var notchController: NotchController?
     private var libraryHotKey: GlobalHotKey?
+    private var composeHotKey: GlobalHotKey?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         FontRegistrar.registerBundledFonts()
@@ -34,8 +35,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         // Global hotkey ⌥⌘V to summon the library (no Accessibility needed).
         libraryHotKey = GlobalHotKey(keyCode: UInt32(kVK_ANSI_V),
-                                     modifiers: UInt32(cmdKey | optionKey)) {
+                                     modifiers: UInt32(cmdKey | optionKey),
+                                     id: 1) {
             launcher.open?()
+        }
+
+        // Global hotkey ⌥⌘N — open quick-note compose mode in the notch.
+        composeHotKey = GlobalHotKey(keyCode: UInt32(kVK_ANSI_N),
+                                     modifiers: UInt32(cmdKey | optionKey),
+                                     id: 2) { [weak self] in
+            self?.notchController?.enterCompose()
         }
     }
 }

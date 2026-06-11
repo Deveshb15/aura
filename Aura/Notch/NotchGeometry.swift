@@ -7,6 +7,8 @@ enum NotchInteractiveMode {
     case expanded
     /// A just-copied item is peeking as a card with a Keep button.
     case nudge
+    /// The notch is open as a quick-note text composer.
+    case compose
 }
 
 /// Computes the FIXED notch window frame plus the global-coordinate hover zones.
@@ -25,6 +27,9 @@ struct NotchGeometry {
     /// The peeking "keep this?" card auto-shown when something is copied.
     static let nudgeWidth: CGFloat = 360
     static let nudgeHeight: CGFloat = 76
+    /// The quick-note compose surface opened via ⌥⌘N.
+    static let composeWidth: CGFloat = 520
+    static let composeHeight: CGFloat = 260
 
     static func current() -> NotchGeometry {
         let screen = notchedScreen() ?? NSScreen.main ?? NSScreen.screens.first!
@@ -91,6 +96,12 @@ struct NotchGeometry {
         globalRect(width: Self.nudgeWidth + 24, height: notchHeight + Self.nudgeHeight + 16)
     }
 
+    /// Hit-test zone for the compose panel — used by the global mouse monitor to
+    /// detect outside-clicks that should dismiss the composer.
+    var composeRect: NSRect {
+        globalRect(width: Self.composeWidth + 24, height: notchHeight + Self.composeHeight + 12)
+    }
+
     /// The interactive rect in the container VIEW's coordinates (bottom-left
     /// origin, pinned to the top of the window). Used for hitTest click-through.
     func interactiveRect(for mode: NotchInteractiveMode) -> CGRect {
@@ -104,6 +115,9 @@ struct NotchGeometry {
         case .nudge:
             size = CGSize(width: Self.nudgeWidth + 24,
                           height: notchHeight + Self.nudgeHeight + 16)
+        case .compose:
+            size = CGSize(width: Self.composeWidth + 24,
+                          height: notchHeight + Self.composeHeight + 12)
         }
         let viewWidth = screen.frame.width
         return CGRect(x: (viewWidth - size.width) / 2,

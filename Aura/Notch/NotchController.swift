@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import SwiftUI
 
 /// Owns the notch panel. The window is FIXED size and never moves; hover is
@@ -26,6 +27,8 @@ final class NotchController {
     private var collapseWorkItem: DispatchWorkItem?
     private var pendingExpiryTask: Task<Void, Never>?
     private var screensChangedWork: DispatchWorkItem?
+    private var composeKeyMonitor: Any?
+    private var composeClickMonitor: Any?
 
     private let openDwell: TimeInterval = 0.12
     private let closeDelay: TimeInterval = 0.20
@@ -39,6 +42,8 @@ final class NotchController {
     deinit {
         if let globalMonitor { NSEvent.removeMonitor(globalMonitor) }
         if let localMonitor { NSEvent.removeMonitor(localMonitor) }
+        if let composeKeyMonitor { NSEvent.removeMonitor(composeKeyMonitor) }
+        if let composeClickMonitor { NSEvent.removeMonitor(composeClickMonitor) }
     }
 
     func show() {
@@ -58,7 +63,9 @@ final class NotchController {
                 guard let self else { return }
                 if targeted { self.expand() } else { self.scheduleCollapse() }
             },
-            onOpenLibrary: { [weak self] in self?.onOpenLibrary?() }
+            onOpenLibrary: { [weak self] in self?.onOpenLibrary?() },
+            onSaveCompose: { [weak self] text in self?.saveCompose(text: text) },
+            onDismissCompose: { [weak self] in self?.exitCompose() }
         )
         let hosting = NSHostingView(rootView: root)
         hosting.frame = container.bounds
@@ -102,9 +109,10 @@ final class NotchController {
         panel?.setFrame(geometry.windowFrame, display: true)
         panel?.orderFrontRegardless()
         state.collapsedSize = geometry.collapsedSize
-        let mode: NotchInteractiveMode = state.pending != nil
-            ? .nudge
-            : (state.mode == .expanded ? .expanded : .collapsed)
+        let mode: NotchInteractiveMode = state.pending != nil ? .nudge
+            : state.mode == .expanded ? .expanded
+            : state.mode == .compose  ? .compose
+            : .collapsed
         container?.interactiveRect = geometry.interactiveRect(for: mode)
     }
 
@@ -122,6 +130,8 @@ final class NotchController {
     }
 
     private func handleMouseMoved() {
+        // While composing, hover-based expand/collapse is suspended.
+        guard state.mode != .compose else { return }
         let location = NSEvent.mouseLocation
         // While a keep card is up, hovering it pauses the auto-dismiss; leaving
         // restarts the countdown. No hover-to-expand until the card is gone.
@@ -147,6 +157,8 @@ final class NotchController {
             } else {
                 scheduleCollapse()
             }
+        case .compose:
+            break   // handled by installComposeMonitors outside-click guard
         }
     }
 
@@ -206,8 +218,8 @@ final class NotchController {
     }
 
     private func collapse() {
-        // Don't collapse out from under a pending keep card.
-        guard state.pending == nil else { return }
+        // Don't collapse out from under a pending keep card or while composing.
+        guard state.pending == nil, state.mode != .compose else { return }
         container?.interactiveRect = geometry.interactiveRect(for: .collapsed)
         withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
             state.mode = .collapsed
@@ -221,6 +233,8 @@ final class NotchController {
     /// automatically and arm it for a few seconds. Keep it, dismiss it, or just
     /// ignore it (it retracts on its own). Hovering the card pauses the timer.
     func handleCopy(_ candidate: CaptureCandidate) {
+        // Don't interrupt the user while they're composing a note.
+        guard state.mode != .compose else { return }
         cancelExpand()
         cancelCollapse()
         let nudge = NudgeItem(candidate: candidate, preview: Self.preview(for: candidate))
@@ -269,6 +283,98 @@ final class NotchController {
             self.state.pending = nil
             self.state.mode = .collapsed
         }
+    }
+
+    // MARK: - Compose mode
+
+    /// Opens the notch as a quick-note text composer. Pressing ⌥⌘N again
+    /// while composing toggles it off (no save). ⌘↩ saves; ⎋ dismisses.
+    func enterCompose() {
+        // Toggle: pressing the hotkey again dismisses without saving.
+        if state.mode == .compose { exitCompose(); return }
+
+        // Conflict resolution: clear any pending card or recents state.
+        if state.pending != nil {
+            pendingExpiryTask?.cancel()
+            pendingExpiryTask = nil
+            state.showPendingContent = false
+            state.pending = nil
+        }
+        cancelExpand()
+        cancelCollapse()
+
+        state.composeText = ""
+        state.showComposeContent = false
+        container?.interactiveRect = geometry.interactiveRect(for: .compose)
+
+        // Make the panel key so keyboard events reach the TextEditor.
+        panel?.acceptsKeyboard = true
+        panel?.makeKeyAndOrderFront(nil)
+        NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
+
+        state.mode = .compose   // panel springs to compose size
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { [weak self] in
+            self?.state.showComposeContent = true   // content fades in
+        }
+        installComposeMonitors()
+    }
+
+    /// Fades out compose content then collapses the panel.
+    func exitCompose() {
+        guard state.mode == .compose else { return }
+        removeComposeMonitors()
+        state.showComposeContent = false    // phase 1: fade out
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) { [weak self] in
+            guard let self, self.state.mode == .compose else { return }
+            self.container?.interactiveRect = self.geometry.interactiveRect(for: .collapsed)
+            self.state.mode = .collapsed    // phase 2: panel collapses
+            self.panel?.acceptsKeyboard = false
+            self.panel?.resignKey()
+        }
+    }
+
+    /// Saves the composed text (if non-empty) then exits compose mode.
+    func saveCompose(text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+            let candidate = CaptureCandidate(payload: .text(trimmed),
+                                             sourceApp: "Aura Quick Note")
+            Task { await dataStore.save(candidate) }
+            NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
+        }
+        exitCompose()
+    }
+
+    private func installComposeMonitors() {
+        // Local key monitor: intercepts ⌘↩ (save) and ⎋ (dismiss) while the
+        // notch panel is key. TextEditor's NSTextView swallows events before
+        // SwiftUI's onKeyPress sees them, so we handle shortcuts here.
+        composeKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.state.mode == .compose else { return event }
+            if event.keyCode == UInt16(kVK_Return), event.modifierFlags.contains(.command) {
+                self.saveCompose(text: self.state.composeText)
+                return nil
+            }
+            if event.keyCode == UInt16(kVK_Escape) {
+                self.exitCompose()
+                return nil
+            }
+            return event
+        }
+        // Global mouse monitor: outside click dismisses the composer.
+        composeClickMonitor = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown]
+        ) { [weak self] _ in
+            guard let self, self.state.mode == .compose else { return }
+            if !self.geometry.composeRect.contains(NSEvent.mouseLocation) {
+                self.exitCompose()
+            }
+        }
+    }
+
+    private func removeComposeMonitors() {
+        if let m = composeKeyMonitor { NSEvent.removeMonitor(m); composeKeyMonitor = nil }
+        if let m = composeClickMonitor { NSEvent.removeMonitor(m); composeClickMonitor = nil }
     }
 
     // MARK: - Helpers

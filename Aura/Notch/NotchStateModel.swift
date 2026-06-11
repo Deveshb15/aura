@@ -9,6 +9,8 @@ final class NotchStateModel {
     enum Mode {
         case collapsed
         case expanded
+        /// The notch is open as a text composer (triggered by ⌥⌘N).
+        case compose
     }
 
     var mode: Mode = .collapsed
@@ -21,6 +23,13 @@ final class NotchStateModel {
     /// size, so the sequence is: panel expands → content fades in … content
     /// fades out → panel collapses (never the other way around).
     var showPendingContent: Bool = false
+
+    /// Mirrors the live text in ComposeView via @Binding so NotchController's
+    /// key monitor can read it without a callback chain.
+    var composeText: String = ""
+
+    /// Same expand-then-fade pattern as showPendingContent, for compose mode.
+    var showComposeContent: Bool = false
 
     /// The collapsed panel size (≈ the physical notch), kept in sync by the
     /// controller so the SwiftUI panel can size itself reactively.

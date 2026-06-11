@@ -23,6 +23,11 @@ final class NotchPanel: NSPanel {
         acceptsMouseMovedEvents = true
     }
 
-    override var canBecomeKey: Bool { false }
+    /// Set to `true` before calling `makeKeyAndOrderFront(_:)` so the panel can
+    /// receive keyboard events (needed for compose mode). Clear it on exit so the
+    /// panel returns to its normal click-through, non-key state.
+    var acceptsKeyboard: Bool = false
+
+    override var canBecomeKey: Bool { acceptsKeyboard }
     override var canBecomeMain: Bool { false }
 }
