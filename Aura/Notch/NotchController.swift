@@ -246,12 +246,13 @@ final class NotchController {
         container?.interactiveRect = geometry.interactiveRect(for: .nudge)
         NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
         // Step 1: panel expands (content invisible — view's animation modifier handles
-        // the size change via state.pending?.id).
+        // the size change via state.pending == nil).
         state.showPendingContent = false
         state.mode = .collapsed
         state.pending = nudge
-        // Step 2: once the panel has started opening, fade the content in.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { [weak self] in
+        // Step 2: bloom the card in while the panel is still opening, so the grow
+        // and the fade read as one continuous motion rather than two steps.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.14) { [weak self] in
             self?.state.showPendingContent = true
         }
         schedulePendingExpiry()
@@ -279,8 +280,8 @@ final class NotchController {
         // Phase 1: fade out the card content (view's .animation modifier fires).
         let dismissedId = state.pending?.id
         state.showPendingContent = false
-        // Phase 2: collapse the panel after the fade finishes (~0.22 s).
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.26) { [weak self] in
+        // Phase 2: collapse the panel once the gentler fade-out has finished.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) { [weak self] in
             guard let self else { return }
             // Guard against a new capture arriving during the fade window.
             guard self.state.pending?.id == dismissedId else { return }

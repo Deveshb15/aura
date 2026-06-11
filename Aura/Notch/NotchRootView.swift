@@ -32,8 +32,9 @@ struct NotchRootView: View {
             .overlay(NotchShape().stroke(Color.white.opacity(0.08), lineWidth: 0.5))
             .clipShape(NotchShape())
             // Panel size springs between collapsed / nudge / expanded.
-            // Critically damped on pending so the notch grows/shrinks cleanly.
-            .animation(.spring(response: 0.34, dampingFraction: 1.0), value: state.pending == nil)
+            // Critically damped on pending so the notch grows/shrinks cleanly —
+            // a hair slower so the grow paces with the card blooming inside it.
+            .animation(.spring(response: 0.4, dampingFraction: 1.0), value: state.pending == nil)
             .animation(.spring(response: 0.5, dampingFraction: 0.86), value: state.mode)
             .onDrop(of: DropReceiver.acceptedTypes, isTargeted: dropBinding) { providers in
                 DropReceiver.handle(providers) { candidate in
@@ -53,12 +54,21 @@ struct NotchRootView: View {
                     .padding(.horizontal, 12)
                     .padding(.top, 4)
                     .padding(.bottom, 8)
-                    // Panel size is driven by `pending != nil`; content opacity is
-                    // driven separately so the sequence is always:
-                    //   show → panel expands first, then content fades in
-                    //   hide → content fades out first, then panel collapses
+                    // Panel size is driven by `pending != nil`; the card's
+                    // appearance is driven separately so the sequence is always:
+                    //   show → panel expands first, then the card blooms in
+                    //   hide → card eases out first, then panel collapses
+                    // Opacity + a subtle settle (slides down from the notch and
+                    // scales up from its top edge). `.smooth` has zero bounce, so
+                    // it reads as a gentle glide, never the old rubber-band nudge.
                     .opacity(state.showPendingContent ? 1 : 0)
-                    .animation(.easeInOut(duration: 0.22), value: state.showPendingContent)
+                    .scaleEffect(state.showPendingContent ? 1 : 0.98, anchor: .top)
+                    .offset(y: state.showPendingContent ? 0 : -6)
+                    // Asymmetric: blooms in gently, leaves a touch quicker.
+                    .animation(state.showPendingContent
+                               ? .smooth(duration: 0.42)
+                               : .smooth(duration: 0.28),
+                               value: state.showPendingContent)
             } else if state.mode == .compose {
                 ComposeView(
                     text: $state.composeText,
