@@ -15,7 +15,7 @@ struct NotchRootView: View {
     let onDragTargetedChange: (Bool) -> Void
     let onOpenLibrary: () -> Void
     let onSaveCompose: (String) -> Void
-    let onDismissCompose: () -> Void
+    let onAddNote: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -62,16 +62,17 @@ struct NotchRootView: View {
             } else if state.mode == .compose {
                 ComposeView(
                     text: $state.composeText,
-                    onSave: onSaveCompose,
-                    onDismiss: onDismissCompose
+                    onSave: onSaveCompose
                 )
                 .padding(.horizontal, 14)
-                .padding(.top, 8)
+                .padding(.top, 2)
                 .padding(.bottom, 10)
                 .opacity(state.showComposeContent ? 1 : 0)
                 .animation(.easeInOut(duration: 0.22), value: state.showComposeContent)
             } else if state.mode == .expanded {
-                NotchExpandedView(dataStore: dataStore, isDropTargeted: state.isDropTargeted)
+                NotchExpandedView(dataStore: dataStore,
+                                  isDropTargeted: state.isDropTargeted,
+                                  onAddNote: onAddNote)
                     .padding(.horizontal, 14)
                     .padding(.top, 8)
                     .padding(.bottom, 12)

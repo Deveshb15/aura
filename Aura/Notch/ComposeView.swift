@@ -6,7 +6,6 @@ import SwiftUI
 struct ComposeView: View {
     @Binding var text: String
     let onSave: (String) -> Void
-    let onDismiss: () -> Void
 
     @FocusState private var isFocused: Bool
 
@@ -73,22 +72,12 @@ struct ComposeView: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(isEmpty)
-
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.50))
-                        .frame(width: 22, height: 22)
-                        .background(.white.opacity(0.07), in: Circle())
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, 6)
             }
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
         }
         .padding(.horizontal, 14)
-        .padding(.top, 10)
+        .padding(.top, 0)
         .onAppear {
             // Small delay so the panel is key before SwiftUI sets first responder.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {

@@ -5,10 +5,11 @@ import SwiftUI
 struct NotchExpandedView: View {
     let dataStore: DataStore
     let isDropTargeted: Bool
+    let onAddNote: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
+            HStack(spacing: 8) {
                 Label("Aura", systemImage: "tray.full.fill")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
@@ -16,6 +17,7 @@ struct NotchExpandedView: View {
                 Text(isDropTargeted ? "Drop to save" : "\(dataStore.recentItems.count) saved")
                     .font(.system(size: 10))
                     .foregroundStyle(isDropTargeted ? Color.green : Color.white.opacity(0.5))
+                addNoteButton
             }
 
             if dataStore.recentItems.isEmpty {
@@ -31,6 +33,23 @@ struct NotchExpandedView: View {
                 }
             }
         }
+    }
+
+    /// Opens the quick-note composer (same surface as the ⌃⌘N hotkey).
+    private var addNoteButton: some View {
+        Button(action: onAddNote) {
+            HStack(spacing: 3) {
+                Image(systemName: "square.and.pencil").font(.system(size: 10, weight: .semibold))
+                Text("Note").font(.system(size: 10.5, weight: .semibold))
+            }
+            .foregroundStyle(.white.opacity(0.9))
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(.white.opacity(0.10), in: Capsule())
+            .overlay(Capsule().strokeBorder(.white.opacity(0.08)))
+        }
+        .buttonStyle(.plain)
+        .help("New note")
     }
 
     private var dropHint: some View {
