@@ -11,10 +11,10 @@ import AppKit
 actor LogoService {
     static let shared = LogoService()
 
-    /// Paste a logo.dev publishable key (`pk_…`) here to use logo.dev as the
-    /// primary source. While nil, the chain starts at the tokenless favicon
-    /// fallback, so logos still appear — just lower-fidelity.
-    static let publishableToken: String? = nil
+    /// logo.dev publishable key (`pk_…`) — primary source for clean brand
+    /// logos. If a domain has no logo.dev match, the chain falls through to
+    /// Google's favicon service automatically.
+    static let publishableToken: String? = "pk_T14-h5nVQ3ejknMKL_13gQ"
 
     /// Set once at startup (see AppEnvironment) to the Assets/ base directory.
     private static var baseURL: URL?
