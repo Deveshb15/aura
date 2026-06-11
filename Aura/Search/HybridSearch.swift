@@ -46,11 +46,29 @@ struct HybridSearch {
 
     // MARK: - Retrievers
 
-    /// FTS5 prefix match → item ids in BM25 rank order.
+    /// FTS5 prefix match → item ids in BM25 rank order. Distils the query to its
+    /// content terms first (drops stopwords/instruction filler), then tries
+    /// AND-of-prefixes for precision and falls back to OR-of-prefixes for recall
+    /// — so a long conversational query still matches on its few real terms
+    /// instead of requiring every filler word ("someone/show/it/to/me").
     private func keywordIDs(_ query: String) async -> [String] {
+        let terms = QueryDistiller.contentTerms(query)
+        let patterns: [FTS5Pattern] = [
+            QueryDistiller.prefixPattern(terms, joinWithOR: false),
+            QueryDistiller.prefixPattern(terms, joinWithOR: true),
+            FTS5Pattern(matchingAllPrefixesIn: query),   // last-resort fallback
+        ].compactMap { $0 }
+
+        for pattern in patterns {
+            let ids = await match(pattern)
+            if !ids.isEmpty { return ids }
+        }
+        return []
+    }
+
+    private func match(_ pattern: FTS5Pattern) async -> [String] {
         (try? await dbPool.read { [candidateLimit] db -> [String] in
-            guard let pattern = FTS5Pattern(matchingAllPrefixesIn: query) else { return [] }
-            return try String.fetchAll(db, sql: """
+            try String.fetchAll(db, sql: """
                 SELECT item.id FROM item
                 JOIN item_fts ON item_fts.rowid = item.rowid
                 WHERE item_fts MATCH ?
@@ -61,8 +79,10 @@ struct HybridSearch {
     }
 
     /// Embed the query → cosine rank over the in-memory vector cache → item ids.
+    /// Embeds the distilled content terms so the mean-pooled vector concentrates
+    /// on the topic rather than conversational filler.
     private func semanticIDs(_ query: String) async -> [String] {
-        guard let vector = await embeddingService.embed(query) else { return [] }
+        guard let vector = await embeddingService.embed(QueryDistiller.embeddingText(query)) else { return [] }
         let ranked = await semanticIndex.rank(query: vector, limit: candidateLimit)
         return ranked.map(\.itemId)
     }
