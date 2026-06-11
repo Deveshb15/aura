@@ -3,6 +3,29 @@
     <channel>
         <title>Aura</title>
         <item>
+            <title>1.4.0</title>
+            <pubDate>Thu, 11 Jun 2026 23:41:47 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>10</sparkle:version>
+            <sparkle:shortVersionString>1.4.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Ask in plain language</h2>
+<p>Search now understands full, conversational questions. "<strong>someone is building a consumer product — show it to me</strong>" finds the right item just like the bare keywords would. Aura distils your query to what matters and ignores the filler, so long natural asks rank as well as short ones — all on-device.</p>
+<h2>Richer cards</h2>
+<ul>
+  <li><strong>Source logos</strong> — every saved item shows where it came from with the real brand logo (Slack, Notion, Brave, X…) and a timestamp.</li>
+  <li><strong>Type icons</strong> on the All / Text / Images / Links / Music / Videos tabs.</li>
+  <li>Cleaner notch tiles — hover any recent item to <strong>Copy</strong> or <strong>Open</strong> it; type badges step out of the way of photos.</li>
+</ul>
+<h2>Quick notes &amp; search polish</h2>
+<ul>
+  <li>A <strong>back button</strong> in the notch note composer.</li>
+  <li>The "Ask your Memory…" field is always ready — pink caret on open, placeholder until you type.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.4.0/Aura-1.4.0.dmg" length="10919072" type="application/octet-stream" sparkle:edSignature="OQvq2x7K0VqYljkyEbdwvUbW1JRVn6Mfp5GTEls/gsbDZbr0coZnHh5DWQ6D8bqMarHDEqK13JHNZOYY67ZRBw=="/>
+        </item>
+        <item>
             <title>1.3.0</title>
             <pubDate>Thu, 11 Jun 2026 20:52:50 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -66,18 +89,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.1.2/Aura-1.1.2.dmg" length="10751512" type="application/octet-stream" sparkle:edSignature="kK1isde60d0TofqIB4q3a6xHMoSAFXWu/C51XxF+UFeNhGT/veUE1eYzKFbvG+0yX0acxIAUSyu6eGRHUl62CQ=="/>
-        </item>
-        <item>
-            <title>1.1.1</title>
-            <pubDate>Wed, 10 Jun 2026 17:56:07 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>5</sparkle:version>
-            <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>The Keep card is back</h2>
-<p>When you copy something, the notch now slides a little <strong>“keep this?”</strong> card down automatically — with a clear <strong>Keep</strong> button — instead of just nudging. Click <strong>Keep</strong> to save it, ✕ to dismiss, or ignore it and it quietly retracts. Hovering the card pauses the countdown.</p>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.1.1/Aura-1.1.1.dmg" length="10742063" type="application/octet-stream" sparkle:edSignature="phATA/g3+QkluOuhtJUUQ2q4z24s9wKT/zyNtxkEJrFyN5c6FEjpqmEjZ13No2JzqQBjM267KX6REvoXLZNsDQ=="/>
         </item>
     </channel>
 </rss>
