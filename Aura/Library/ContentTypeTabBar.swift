@@ -19,6 +19,18 @@ enum ContentTab: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Tab glyph (SF Symbols), a clean cohesive set.
+    var symbol: String {
+        switch self {
+        case .all:     return "square.grid.2x2.fill"
+        case .writing: return "text.alignleft"
+        case .images:  return "photo.fill"
+        case .links:   return "link"
+        case .music:   return "music.note"
+        case .videos:  return "play.rectangle.fill"
+        }
+    }
+
     /// Every tab an item belongs to, derived at display time from `itemType` +
     /// `host`, so it works for existing rows without a DB migration. A text
     /// capture with an embedded link counts as BOTH writing and its link tab.
@@ -79,18 +91,24 @@ struct ContentTypeTabBar: View {
         return Button {
             selection = tab
         } label: {
-            Text(tab.label)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(isSelected ? Color.black : AuraTheme.textSecondary)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background {
-                    if isSelected {
-                        Capsule().fill(AuraTheme.activePill)
-                    }
+            HStack(spacing: 6) {
+                Image(systemName: tab.symbol)
+                    .font(.system(size: 11.5, weight: .semibold))
+                    .imageScale(.medium)
+                Text(tab.label)
+                    .font(.system(size: 14, weight: .medium))
+            }
+            .foregroundStyle(isSelected ? Color.black : AuraTheme.textSecondary)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
+            .background {
+                if isSelected {
+                    Capsule().fill(AuraTheme.activePill)
                 }
-                .contentShape(Capsule())
+            }
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
+        .animation(.easeOut(duration: 0.18), value: isSelected)
     }
 }
