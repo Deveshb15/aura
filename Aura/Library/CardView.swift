@@ -7,6 +7,7 @@ import SwiftUI
 struct CardView: View {
     let item: Item
     @Environment(DataStore.self) private var store
+    @Environment(InAppComposeLauncher.self) private var composeLauncher
     @State private var hovering = false
     @State private var copied = false
 
@@ -34,6 +35,14 @@ struct CardView: View {
                     Button("Open", systemImage: "arrow.up.forward.app") { store.open(item) }
                 }
                 Button("Copy", systemImage: "doc.on.doc") { store.copyToClipboard(item) }
+                if item.itemType == .text {
+                    Button("Edit", systemImage: "pencil") { composeLauncher.presentEdit?(item) }
+                }
+                if item.hasReminder {
+                    Button("Remove reminder", systemImage: "bell.slash") {
+                        Task { await store.setReminder(item, at: nil) }
+                    }
+                }
                 if item.itemType == .file || item.itemType == .image {
                     Button("Reveal in Finder", systemImage: "folder") { store.revealInFinder(item) }
                 }
@@ -56,6 +65,11 @@ struct CardView: View {
                     Task {
                         try? await Task.sleep(nanoseconds: 1_100_000_000)
                         copied = false
+                    }
+                }
+                if item.itemType == .text {
+                    CardActionButton(systemName: "pencil", help: "Edit") {
+                        composeLauncher.presentEdit?(item)
                     }
                 }
                 if item.canOpen {

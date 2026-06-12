@@ -8,6 +8,7 @@ struct AuraApp: App {
         MenuBarExtra {
             MenuBarContent(composeLauncher: appDelegate.env.composeLauncher)
                 .environment(appDelegate.env.dataStore)
+                .environment(appDelegate.env.settingsPresenter)
                 .environmentObject(appDelegate.env.updater)
         } label: {
             MenuBarLabel(launcher: appDelegate.env.libraryLauncher)
@@ -16,15 +17,15 @@ struct AuraApp: App {
         Window("Library", id: "library") {
             LibraryWindowView()
                 .environment(appDelegate.env.dataStore)
+                .environment(appDelegate.env.inAppComposeLauncher)
+                .environment(appDelegate.env.settingsPresenter)
                 .frame(minWidth: 820, minHeight: 560)
         }
         .windowResizability(.contentMinSize)
         .defaultSize(width: 1040, height: 720)
 
-        Settings {
-            SettingsView()
-                .environment(appDelegate.env.dataStore)
-        }
+        // Settings now live in-app (full-page inside the Library window, driven
+        // by SettingsPresenter), so there is no native `Settings` scene.
     }
 }
 

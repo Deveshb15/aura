@@ -50,6 +50,14 @@ struct Item: Codable, Identifiable, Equatable, FetchableRecord, PersistableRecor
     // semantic embedding. Populated asynchronously after save (v3 column).
     var extractedText: String?
 
+    // Reminder (v4). Set when a note's text expresses "remind me …" and the
+    // user confirms a time. `reminderAt` is the fire time; `reminderDelivered`
+    // flips true once the local notification has fired (or was reconciled as
+    // past). Deliberately kept OUT of `searchText` — these are scheduling
+    // metadata, not content.
+    var reminderAt: Date?
+    var reminderDelivered: Bool?
+
     init(id: String = UUID().uuidString,
          type: ItemType,
          createdAt: Date = Date(),
@@ -73,6 +81,15 @@ extension Item {
         case .text: return CaptureCandidate.firstWebURL(in: textContent ?? "")
         default: return nil
         }
+    }
+
+    /// True when this item has a reminder set (regardless of delivery state).
+    var hasReminder: Bool { reminderAt != nil }
+
+    /// A reminder that hasn't fired yet and is still in the future.
+    func isPendingReminder(now: Date = Date()) -> Bool {
+        guard let reminderAt else { return false }
+        return reminderDelivered != true && reminderAt > now
     }
 
     /// Whether a primary click can "open" this item (vs. just copy it).

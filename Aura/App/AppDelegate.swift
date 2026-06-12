@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import UserNotifications
 
 /// Creates the notch panel, starts clipboard watching, and wires the two
 /// together. The app stays an `.accessory` (menu-bar) agent throughout.
@@ -9,6 +10,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var notchController: NotchController?
     private var libraryHotKey: GlobalHotKey?
     private var composeHotKey: GlobalHotKey?
+    private var onboardingController: OnboardingController?
+    private var notificationDelegate: ReminderNotificationDelegate?
+    private var didActivateApp = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         FontRegistrar.registerBundledFonts()
@@ -21,11 +25,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let controller = NotchController(state: NotchStateModel(), dataStore: env.dataStore)
         let launcher = env.libraryLauncher
         controller.onOpenLibrary = { launcher.open?() }
-        controller.show()
         notchController = controller
 
-        // Let the menu-bar menu open the composer (mirrors libraryLauncher).
-        env.composeLauncher.compose = { [weak controller] in controller?.enterCompose() }
+        // New Note routes to the in-app composer when the Library is the key
+        // window, otherwise to the notch (see routeNewNote).
+        env.composeLauncher.compose = { [weak self] in self?.routeNewNote() }
+
+        // Reminders: present notifications while the app runs and open the
+        // Library on click; reconcile any reminders left from a prior launch.
+        let notifDelegate = ReminderNotificationDelegate(
+            dataStore: env.dataStore,
+            openLibrary: { launcher.open?() }
+        )
+        notificationDelegate = notifDelegate
+        UNUserNotificationCenter.current().delegate = notifDelegate
+        Task { await env.dataStore.reconcileReminders() }
 
         let watcher = env.clipboardWatcher
         watcher.onCandidate = { [weak controller] candidate in
@@ -34,7 +48,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         env.dataStore.onSelfCopy = { [weak watcher] changeCount in
             watcher?.ignore(changeCount: changeCount)
         }
-        watcher.start()
 
         // Global hotkey ⌥⌘V to summon the library (no Accessibility needed).
         libraryHotKey = GlobalHotKey(keyCode: UInt32(kVK_ANSI_V),
@@ -49,7 +62,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         composeHotKey = GlobalHotKey(keyCode: UInt32(kVK_ANSI_N),
                                      modifiers: UInt32(cmdKey | controlKey),
                                      id: 2) { [weak self] in
-            self?.notchController?.enterCompose()
+            self?.routeNewNote()
+        }
+
+        // Show onboarding on first launch; otherwise go live immediately. On the
+        // first run the notch reveal and clipboard capture are deferred until
+        // onboarding finishes, so nothing nudges out over the welcome window.
+        if UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
+            activateAppIfNeeded()
+        } else {
+            presentOnboarding()
+        }
+
+        // Settings → "Replay Welcome…" re-opens onboarding on demand.
+        NotificationCenter.default.addObserver(
+            forName: .auraReplayOnboarding, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.presentOnboarding() }
         }
     }
+
+    /// New Note routing: compose in the Library window when it's the key window
+    /// and has registered an in-app composer; otherwise pop the notch composer.
+    /// This is what makes "create a note while the app is open" not open the notch.
+    private func routeNewNote() {
+        let inApp = env.inAppComposeLauncher
+        if inApp.isLibraryKey, let present = inApp.present {
+            present()
+        } else {
+            notchController?.enterCompose()
+        }
+    }
+
+    /// Reveal the notch panel and start clipboard capture — exactly once.
+    private func activateAppIfNeeded() {
+        guard !didActivateApp else { return }
+        didActivateApp = true
+        notchController?.show()
+        env.clipboardWatcher.start()
+    }
+
+    /// Present the first-launch onboarding window (no-op if already showing).
+    /// Its completion marks onboarding done and brings the app live.
+    private func presentOnboarding() {
+        guard onboardingController == nil else { return }
+        let controller = OnboardingController { [weak self] in
+            UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+            self?.activateAppIfNeeded()
+            self?.onboardingController = nil
+        }
+        onboardingController = controller
+        controller.show()
+    }
+}
+
+extension Notification.Name {
+    /// Posted by Settings to replay the first-launch onboarding flow.
+    static let auraReplayOnboarding = Notification.Name("auraReplayOnboarding")
 }

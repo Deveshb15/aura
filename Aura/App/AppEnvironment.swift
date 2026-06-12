@@ -1,4 +1,5 @@
 import Foundation
+import Observation
 import GRDB
 
 /// Bridges "open the library window" from AppKit (the notch) to SwiftUI's
@@ -7,6 +8,15 @@ import GRDB
 @MainActor
 final class LibraryLauncher {
     var open: (() -> Void)?
+}
+
+/// Shared presentation state for the in-app Settings screen. Both entry points
+/// — the gear in the Library window and the menu-bar "Settings…" item — flip
+/// `isPresented`, and `LibraryWindowView` renders the full-page screen from it.
+@MainActor
+@Observable
+final class SettingsPresenter {
+    var isPresented = false
 }
 
 /// Bridges "open the quick-note composer" from a SwiftUI scene (the menu-bar
@@ -27,6 +37,8 @@ final class AppEnvironment {
     let clipboardWatcher: ClipboardWatcher
     let libraryLauncher = LibraryLauncher()
     let composeLauncher = ComposeLauncher()
+    let inAppComposeLauncher = InAppComposeLauncher()
+    let settingsPresenter = SettingsPresenter()
     let updater = SparkleUpdater()
 
     init() {

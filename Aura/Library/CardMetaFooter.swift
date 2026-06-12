@@ -7,6 +7,7 @@ import SwiftUI
 struct CardMetaFooter: View {
     let item: Item
     @Environment(DataStore.self) private var store
+    @Environment(InAppComposeLauncher.self) private var composeLauncher
 
     /// URL / link-text cards already show a favicon + host in their body, so
     /// repeating the source there would be redundant — show type + time only.
@@ -25,6 +26,8 @@ struct CardMetaFooter: View {
                             faviconURL: store.fileURL(forRelativePath: item.faviconPath))
             }
 
+            if item.hasReminder { reminderChip }
+
             Spacer(minLength: 4)
 
             Text(RelativeTime.medium(item.createdAt))
@@ -36,6 +39,30 @@ struct CardMetaFooter: View {
         .padding(.vertical, 8)
         .overlay(alignment: .top) {
             Rectangle().fill(AuraTheme.hairline).frame(height: 0.5)
+        }
+    }
+
+    /// Bell chip with the fire time. Accent while pending; muted once the
+    /// reminder has fired or its time has passed. Tapping opens the editor.
+    @ViewBuilder private var reminderChip: some View {
+        if let fireDate = item.reminderAt {
+            let past = item.reminderDelivered == true || fireDate < Date()
+            Button {
+                composeLauncher.presentEdit?(item)
+            } label: {
+                HStack(spacing: 3) {
+                    Image(systemName: past ? "bell.slash.fill" : "bell.fill")
+                    Text(ReminderTime.chipLabel(fireDate))
+                }
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(past ? AuraTheme.textTertiary : AuraTheme.accentDot)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(AuraTheme.surfaceHover))
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .help(past ? "Reminder passed — edit" : "Edit reminder")
         }
     }
 }
