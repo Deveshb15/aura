@@ -12,6 +12,7 @@ struct HowToPage: Identifiable {
     enum Kind {
         case copyNudge
         case hotkey(keys: [String], symbol: String)
+        case reminder
         case dragSave
     }
 
@@ -30,6 +31,11 @@ struct HowToPage: Identifiable {
             kind: .hotkey(keys: ["⌃", "⌘", "N"], symbol: "square.and.pencil"),
             title: "Jot a quick note",
             detail: "Press ⌃⌘N to write a quick note right in the notch. Hit return and it lands in your vault."
+        ),
+        HowToPage(
+            kind: .reminder,
+            title: "Reminders, just write them",
+            detail: "Start a note with “remind me…” and Aura reads the time and sets a notification — “remind me to call mom tomorrow at 3pm” just works."
         ),
         HowToPage(
             kind: .dragSave,
@@ -73,9 +79,75 @@ struct HowToPageView: View {
             NotchMockView(mode: .nudge)
         case .hotkey(let keys, let symbol):
             HotkeyIllustration(keys: keys, symbol: symbol)
+        case .reminder:
+            ReminderMockView()
         case .dragSave:
             NotchMockView(mode: .drag)
         }
+    }
+}
+
+/// A note card whose text reads "remind me…", with the parsed time shown as a
+/// bell chip and a small notification banner floating above — conveying that
+/// writing a reminder note sets an alert.
+private struct ReminderMockView: View {
+    var body: some View {
+        ZStack {
+            AuraGlow(size: 230, intensity: 0.46)
+
+            VStack(spacing: 16) {
+                notificationBanner
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Remind me to call mom\ntomorrow at 3pm")
+                        .font(.system(size: 13.5, weight: .medium))
+                        .foregroundStyle(AuraTheme.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: 5) {
+                        Image(systemName: "bell.fill")
+                            .font(.system(size: 10, weight: .semibold))
+                        Text("Tomorrow 3:00 PM")
+                            .font(.system(size: 11, weight: .medium))
+                    }
+                    .foregroundStyle(AuraTheme.accentDot)
+                    .padding(.horizontal, 9).padding(.vertical, 5)
+                    .background(Capsule().fill(AuraTheme.accentDot.opacity(0.16)))
+                }
+                .padding(16)
+                .frame(width: 256, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AuraTheme.surface))
+                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(AuraTheme.hairline, lineWidth: 1))
+                .shadow(color: .black.opacity(0.3), radius: 12, y: 6)
+            }
+        }
+    }
+
+    private var notificationBanner: some View {
+        HStack(spacing: 9) {
+            RoundedRectangle(cornerRadius: 7, style: .continuous)
+                .fill(AuraTheme.accentDot.opacity(0.22))
+                .overlay(Image(systemName: "bell.fill")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(AuraTheme.accentDot))
+                .frame(width: 30, height: 30)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Reminder")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(AuraTheme.textPrimary)
+                Capsule().fill(Color.white.opacity(0.16)).frame(width: 96, height: 5)
+            }
+
+            Spacer(minLength: 6)
+        }
+        .padding(10)
+        .frame(width: 220)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(AuraTheme.surface))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .stroke(AuraTheme.hairline, lineWidth: 1))
+        .shadow(color: .black.opacity(0.28), radius: 10, y: 5)
     }
 }
 
