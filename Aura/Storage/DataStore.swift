@@ -584,6 +584,46 @@ final class DataStore {
         return try await exporter.export()
     }
 
+    /// Imports a browser's exported bookmarks (`.html`, Netscape format) as `url`
+    /// items, preserving their original dates and skipping URLs already saved.
+    /// Items land instantly (host + any embedded favicon); link previews are then
+    /// fetched by a throttled background pass.
+    func importBookmarks(from fileURL: URL) async throws -> BookmarkImporter.ImportResult {
+        let importer = BookmarkImporter(dbPool: dbPool, assetStore: assetStore)
+        let (result, newIDs) = try await importer.run(fileURL: fileURL)
+        enrichImportedBookmarks(ids: newIDs)
+        return result
+    }
+
+    /// Fetches link previews for freshly-imported bookmarks with a sliding window
+    /// of a few concurrent requests — polite to remote hosts, and far faster than
+    /// the serial 40-per-launch `backfillPending`. Anything not reached (app quit
+    /// mid-pass) stays `ogTitle == nil`, so the backfill still finishes it later.
+    private func enrichImportedBookmarks(ids: [String]) {
+        guard UserDefaults.standard.object(forKey: "linkPreviewsEnabled") as? Bool ?? true else { return }
+        guard !ids.isEmpty else { return }
+        Task { [weak self] in
+            await withTaskGroup(of: Void.self) { group in
+                let maxConcurrent = 4
+                var index = 0
+                while index < min(maxConcurrent, ids.count) {
+                    let id = ids[index]; index += 1
+                    group.addTask { [weak self] in await self?.enrichImported(id: id) }
+                }
+                while await group.next() != nil {
+                    guard index < ids.count else { continue }
+                    let id = ids[index]; index += 1
+                    group.addTask { [weak self] in await self?.enrichImported(id: id) }
+                }
+            }
+        }
+    }
+
+    private func enrichImported(id: String) async {
+        guard let item = try? await dbPool.read({ db in try Item.fetchOne(db, key: id) }) else { return }
+        await enrichLink(item)
+    }
+
     /// Deletes every saved item and its on-disk assets (collections are kept).
     func deleteAllItems() {
         let assetStore = self.assetStore

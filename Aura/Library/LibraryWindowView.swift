@@ -7,6 +7,7 @@ struct LibraryWindowView: View {
     @Environment(DataStore.self) private var store
     @Environment(InAppComposeLauncher.self) private var composeLauncher
     @Environment(SettingsPresenter.self) private var settings
+    @Environment(ToastCenter.self) private var toasts
     @State private var query = ""
     @State private var selectedTab: ContentTab = .all
     @State private var searchResults: [Item] = []
@@ -46,6 +47,16 @@ struct LibraryWindowView: View {
         // Hidden while Settings is up (it has its own Back control).
         .overlay(alignment: .topLeading) { if !settings.isPresented { newNoteButton } }
         .overlay(alignment: .topTrailing) { if !settings.isPresented { settingsGear } }
+        // Transient confirmation banner (e.g. after a bookmark import), floated
+        // above whatever surface is showing — library or the Settings overlay.
+        .overlay(alignment: .bottom) {
+            if let toast = toasts.current {
+                ToastView(toast: toast) { toasts.dismiss() }
+                    .padding(.bottom, 30)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.42, dampingFraction: 0.82), value: toasts.current)
         .preferredColorScheme(.dark)
         .background(WindowFullScreenEnabler(launcher: composeLauncher))
         // ⌘N opens the in-app composer while this window is key (distinct from

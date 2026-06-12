@@ -9,6 +9,7 @@ import UniformTypeIdentifiers
 /// unchanged from the old `Form`-based settings — only the presentation differs.
 struct SettingsScreen: View {
     @Environment(DataStore.self) private var store
+    @Environment(ToastCenter.self) private var toasts
     /// Returns to the library (the gear/back arrow owns the actual dismissal).
     var onBack: () -> Void
 
@@ -19,6 +20,11 @@ struct SettingsScreen: View {
     @State private var confirmingClear = false
     @State private var isExporting = false
     @State private var exportError: String?
+    @State private var isImporting = false
+    @State private var importSummary: String?
+    @State private var importError: String?
+    @State private var showingExportHelp = false
+    @State private var showingExportInfo = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -128,7 +134,23 @@ struct SettingsScreen: View {
                 .padding(.vertical, 13)
                 rowDivider
                 HStack {
-                    rowLabel("Export")
+                    VStack(alignment: .leading, spacing: 3) {
+                        rowLabel("Export")
+                        Button { showingExportInfo.toggle() } label: {
+                            HStack(spacing: 3) {
+                                Text("What's included?")
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 8, weight: .semibold))
+                            }
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(AuraTheme.textTertiary)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showingExportInfo, arrowEdge: .bottom) {
+                            exportInfoPopover
+                        }
+                    }
                     Spacer()
                     Button(action: startExport) {
                         if isExporting {
@@ -142,12 +164,48 @@ struct SettingsScreen: View {
                 }
                 .padding(.vertical, 10)
                 rowDivider
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        rowLabel("Import bookmarks")
+                        Button { showingExportHelp.toggle() } label: {
+                            HStack(spacing: 3) {
+                                Text("How do I export?")
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 8, weight: .semibold))
+                            }
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(AuraTheme.textTertiary)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showingExportHelp, arrowEdge: .bottom) {
+                            exportHelpPopover
+                        }
+                    }
+                    Spacer()
+                    Button(action: startBookmarkImport) {
+                        if isImporting {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Text("Import bookmarks…")
+                        }
+                    }
+                    .buttonStyle(AuraSecondaryButtonStyle(compact: true))
+                    .disabled(isImporting)
+                }
+                .padding(.vertical, 10)
+                rowDivider
                 clearRow
             }
             if let exportError {
                 footnote(exportError, color: AuraTheme.destructive)
             }
-            footnote("Saves a .zip you can open anywhere — each saved item becomes its own file, grouped into Text, Links, Images, Files and Colors folders, plus an aura-export.json with the details.")
+            if let importError {
+                footnote(importError, color: AuraTheme.destructive)
+            }
+            if let importSummary {
+                footnote(importSummary)
+            }
         }
     }
 
@@ -270,6 +328,127 @@ struct SettingsScreen: View {
                 isExporting = false
                 exportError = error.localizedDescription
             }
+        }
+    }
+
+    // MARK: - Import (browser bookmarks)
+
+    private struct ExportGuide: Identifiable {
+        let browser: String
+        let steps: String
+        var id: String { browser }
+    }
+
+    /// Where each browser hides "Export bookmarks". The Chromium families share a
+    /// path, so the last row covers Arc/Opera/Vivaldi without claiming a wrong menu.
+    private static let exportGuides: [ExportGuide] = [
+        ExportGuide(browser: "Chrome, Edge, Brave",
+                    steps: "Bookmarks → Bookmark Manager → ⋮ (top-right) → Export bookmarks"),
+        ExportGuide(browser: "Safari",
+                    steps: "File → Export → Bookmarks…"),
+        ExportGuide(browser: "Firefox",
+                    steps: "Bookmarks → Manage Bookmarks → Import and Backup → Export Bookmarks to HTML…"),
+        ExportGuide(browser: "Arc & other Chromium browsers",
+                    steps: "Open the bookmark manager, then choose Export bookmarks"),
+    ]
+
+    /// Per-browser export steps, shown right where the user is about to import.
+    /// Fills its own background so the dark theme survives inside the popover.
+    private var exportHelpPopover: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Export bookmarks from your browser")
+                .font(AuraFont.serif(16, .medium))
+                .foregroundStyle(AuraTheme.textPrimary)
+
+            VStack(alignment: .leading, spacing: 11) {
+                ForEach(Self.exportGuides) { guide in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(guide.browser)
+                            .font(.system(size: 12.5, weight: .semibold))
+                            .foregroundStyle(AuraTheme.textPrimary)
+                        Text(guide.steps)
+                            .font(.system(size: 12))
+                            .foregroundStyle(AuraTheme.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+
+            Text("Save the .html anywhere, then click Import bookmarks and pick it.")
+                .font(.system(size: 11.5))
+                .foregroundStyle(AuraTheme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .frame(width: 320, alignment: .leading)
+        .background(AuraTheme.background)
+    }
+
+    /// What the Zip export contains — shown inline like "How do I export?" so the
+    /// detail lives next to the action instead of as a footnote.
+    private var exportInfoPopover: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("What's in the export")
+                .font(AuraFont.serif(16, .medium))
+                .foregroundStyle(AuraTheme.textPrimary)
+            Text("A .zip you can open anywhere — each saved item becomes its own file, grouped into Text, Links, Images, Files and Colors folders, plus an aura-export.json with the details.")
+                .font(.system(size: 12))
+                .foregroundStyle(AuraTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .frame(width: 320, alignment: .leading)
+        .background(AuraTheme.background)
+    }
+
+    /// Picks a bookmarks HTML file, imports it off the main actor, then reports a
+    /// human summary. Mirrors `startExport` but with an open panel.
+    private func startBookmarkImport() {
+        let panel = NSOpenPanel()
+        panel.title = "Import Bookmarks"
+        panel.prompt = "Import"
+        panel.allowedContentTypes = [.html]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        importError = nil
+        importSummary = nil
+        isImporting = true
+        Task {
+            do {
+                let result = try await store.importBookmarks(from: url)
+                isImporting = false
+                applyImportResult(result)
+            } catch {
+                isImporting = false
+                importError = error.localizedDescription
+            }
+        }
+    }
+
+    /// Turns the counts into a friendly, success-toned message. A file with no
+    /// recognizable bookmarks is the one case surfaced as an error.
+    private func applyImportResult(_ result: BookmarkImporter.ImportResult) {
+        if result.imported > 0 {
+            var message = "Imported \(result.imported) bookmark\(result.imported == 1 ? "" : "s")."
+            if result.skippedDuplicates > 0 {
+                message += " Skipped \(result.skippedDuplicates) already in your vault."
+            }
+            importSummary = message
+            toasts.show(AuraToast(
+                title: "Imported \(result.imported) bookmark\(result.imported == 1 ? "" : "s")",
+                subtitle: result.skippedDuplicates > 0
+                    ? "\(result.skippedDuplicates) already saved — skipped"
+                    : "Now at the top of your library",
+                symbol: "checkmark.circle.fill"))
+        } else if result.skippedDuplicates > 0 {
+            importSummary = "All \(result.skippedDuplicates) bookmark\(result.skippedDuplicates == 1 ? " was" : "s were") already in your vault."
+        } else if result.totalParsed == 0 {
+            importError = "This doesn't look like a bookmarks file. Export bookmarks from your browser as HTML and try again."
+        } else {
+            importSummary = "No web bookmarks found to import."
         }
     }
 

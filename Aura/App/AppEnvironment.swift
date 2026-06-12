@@ -39,6 +39,7 @@ final class AppEnvironment {
     let composeLauncher = ComposeLauncher()
     let inAppComposeLauncher = InAppComposeLauncher()
     let settingsPresenter = SettingsPresenter()
+    let toastCenter = ToastCenter()
     let updater = SparkleUpdater()
 
     init() {
