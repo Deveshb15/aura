@@ -163,6 +163,19 @@ enum AppDatabase {
             }
         }
 
+        // Reminders: a note whose text says "remind me …" can carry a fire time
+        // and a delivered flag, so we can schedule a local notification and
+        // reconcile pending ones at launch. Both columns are scheduling
+        // metadata — kept OUT of item_fts and Item.searchText, so this is a
+        // pure additive ALTER with no FTS rebuild.
+        migrator.registerMigration("v4-reminders") { db in
+            try db.alter(table: "item") { t in
+                t.add(column: "reminderAt", .datetime)                 // nil = not a reminder
+                t.add(column: "reminderDelivered", .boolean).defaults(to: false)
+            }
+            try db.create(index: "item_on_reminderAt", on: "item", columns: ["reminderAt"])
+        }
+
         return migrator
     }
 }

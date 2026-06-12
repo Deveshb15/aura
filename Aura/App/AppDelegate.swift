@@ -1,5 +1,6 @@
 import AppKit
 import Carbon.HIToolbox
+import UserNotifications
 
 /// Creates the notch panel, starts clipboard watching, and wires the two
 /// together. The app stays an `.accessory` (menu-bar) agent throughout.
@@ -10,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var libraryHotKey: GlobalHotKey?
     private var composeHotKey: GlobalHotKey?
     private var onboardingController: OnboardingController?
+    private var notificationDelegate: ReminderNotificationDelegate?
     private var didActivateApp = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -25,8 +27,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         controller.onOpenLibrary = { launcher.open?() }
         notchController = controller
 
-        // Let the menu-bar menu open the composer (mirrors libraryLauncher).
-        env.composeLauncher.compose = { [weak controller] in controller?.enterCompose() }
+        // New Note routes to the in-app composer when the Library is the key
+        // window, otherwise to the notch (see routeNewNote).
+        env.composeLauncher.compose = { [weak self] in self?.routeNewNote() }
+
+        // Reminders: present notifications while the app runs and open the
+        // Library on click; reconcile any reminders left from a prior launch.
+        let notifDelegate = ReminderNotificationDelegate(
+            dataStore: env.dataStore,
+            openLibrary: { launcher.open?() }
+        )
+        notificationDelegate = notifDelegate
+        UNUserNotificationCenter.current().delegate = notifDelegate
+        Task { await env.dataStore.reconcileReminders() }
 
         let watcher = env.clipboardWatcher
         watcher.onCandidate = { [weak controller] candidate in
@@ -49,7 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         composeHotKey = GlobalHotKey(keyCode: UInt32(kVK_ANSI_N),
                                      modifiers: UInt32(cmdKey | controlKey),
                                      id: 2) { [weak self] in
-            self?.notchController?.enterCompose()
+            self?.routeNewNote()
         }
 
         // Show onboarding on first launch; otherwise go live immediately. On the
@@ -66,6 +79,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             forName: .auraReplayOnboarding, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.presentOnboarding() }
+        }
+    }
+
+    /// New Note routing: compose in the Library window when it's the key window
+    /// and has registered an in-app composer; otherwise pop the notch composer.
+    /// This is what makes "create a note while the app is open" not open the notch.
+    private func routeNewNote() {
+        let inApp = env.inAppComposeLauncher
+        if inApp.isLibraryKey, let present = inApp.present {
+            present()
+        } else {
+            notchController?.enterCompose()
         }
     }
 

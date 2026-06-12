@@ -5,9 +5,13 @@ import SwiftUI
 /// hero that doubles as the search field, content-type tabs, and the bento grid.
 struct LibraryWindowView: View {
     @Environment(DataStore.self) private var store
+    @Environment(InAppComposeLauncher.self) private var composeLauncher
+    @Environment(SettingsPresenter.self) private var settings
     @State private var query = ""
     @State private var selectedTab: ContentTab = .all
     @State private var searchResults: [Item] = []
+    @State private var showRemindersOnly = false
+    @State private var composerSheet: ComposerSheet?
     @FocusState private var searchFocused: Bool
 
     // On-device AI answer (macOS 26+ / Apple Silicon). Streamed on Return.
@@ -25,22 +29,62 @@ struct LibraryWindowView: View {
                 .contentShape(Rectangle())
                 .onTapGesture { searchFocused = true }
 
-            VStack(spacing: 0) {
-                wordmark
-                    .padding(.top, 26)
-                    .padding(.bottom, 52)
-                searchHero
-                    .padding(.horizontal, 40)
-                    .padding(.bottom, showAnswer ? 16 : 26)
-                answerBanner
-                ContentTypeTabBar(selection: $selectedTab)
-                    .padding(.horizontal, 40)
-                    .padding(.bottom, 18)
-                content
+            // Settings takes over the whole window (in-app, no native popup);
+            // otherwise the library is shown.
+            if settings.isPresented {
+                SettingsScreen(onBack: {
+                    withAnimation(.easeOut(duration: 0.22)) { settings.isPresented = false }
+                })
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            } else {
+                libraryStack
+                    .transition(.opacity)
             }
         }
+        // A "New note" affordance and the settings gear flank the header. Both
+        // are in-window because the app is an LSUIElement agent (no app menu).
+        // Hidden while Settings is up (it has its own Back control).
+        .overlay(alignment: .topLeading) { if !settings.isPresented { newNoteButton } }
+        .overlay(alignment: .topTrailing) { if !settings.isPresented { settingsGear } }
         .preferredColorScheme(.dark)
-        .background(WindowFullScreenEnabler())
+        .background(WindowFullScreenEnabler(launcher: composeLauncher))
+        // ⌘N opens the in-app composer while this window is key (distinct from
+        // the global ⌃⌘N, which the notch handles when the Library isn't focused).
+        .background {
+            Button("") { composerSheet = ComposerSheet(mode: .create) }
+                .keyboardShortcut("n", modifiers: .command)
+                .opacity(0)
+                .accessibilityHidden(true)
+        }
+        .sheet(item: $composerSheet) { sheet in
+            NoteComposerView(
+                mode: sheet.mode,
+                onSave: { result in
+                    switch sheet.mode {
+                    case .create:
+                        Task { await store.saveNote(text: result.text,
+                                                    reminderDate: result.reminderAt,
+                                                    sourceApp: "Aura") }
+                    case .edit(let item):
+                        Task { await store.updateNote(item, text: result.text,
+                                                      reminderDate: result.reminderAt) }
+                    }
+                    composerSheet = nil
+                },
+                onCancel: { composerSheet = nil }
+            )
+        }
+        // Register the in-app composer entry points so the global New Note hotkey
+        // and card "Edit" can drive this window's sheet.
+        .onAppear {
+            composeLauncher.present = { composerSheet = ComposerSheet(mode: .create) }
+            composeLauncher.presentEdit = { item in composerSheet = ComposerSheet(mode: .edit(item)) }
+        }
+        .onDisappear {
+            composeLauncher.present = nil
+            composeLauncher.presentEdit = nil
+            composeLauncher.isLibraryKey = false
+        }
         .task(id: query) {
             let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { searchResults = []; return }
@@ -55,7 +99,33 @@ struct LibraryWindowView: View {
             }
         }
         // Switching tabs (or any stray focus change) shouldn't strand the caret.
-        .onChange(of: selectedTab) { _, _ in searchFocused = true }
+        // Picking a content tab also exits the reminders-only filter.
+        .onChange(of: selectedTab) { _, _ in
+            searchFocused = true
+            showRemindersOnly = false
+        }
+    }
+
+    // MARK: - Library
+
+    /// The library surface: wordmark, search hero, answer, tabs, and grid.
+    private var libraryStack: some View {
+        VStack(spacing: 0) {
+            wordmark
+                .padding(.top, 26)
+                .padding(.bottom, 52)
+            searchHero
+                .padding(.horizontal, 40)
+                .padding(.bottom, showAnswer ? 16 : 26)
+            answerBanner
+            HStack(spacing: 8) {
+                ContentTypeTabBar(selection: $selectedTab)
+                remindersToggle
+            }
+            .padding(.horizontal, 40)
+            .padding(.bottom, 18)
+            content
+        }
     }
 
     // MARK: - Header
@@ -65,6 +135,62 @@ struct LibraryWindowView: View {
             .font(AuraFont.serif(21, .medium))
             .foregroundStyle(AuraTheme.textPrimary)
             .frame(maxWidth: .infinity)
+    }
+
+    /// Header affordance to compose a note in-app (also bound to ⌘N).
+    private var newNoteButton: some View {
+        Button { composerSheet = ComposerSheet(mode: .create) } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: 13, weight: .medium))
+                Text("New note")
+                    .font(.system(size: 12.5, weight: .medium))
+            }
+            .foregroundStyle(AuraTheme.textSecondary)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 6)
+            .background(Capsule().fill(AuraTheme.surface))
+            .overlay(Capsule().strokeBorder(AuraTheme.hairline))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 16)
+        .padding(.leading, 20)
+        .help("New note (⌘N)")
+    }
+
+    /// Bell toggle beside the content tabs: filters to reminder notes, soonest
+    /// first. Keeps the tab row uncluttered (no dedicated "Reminders" tab).
+    private var remindersToggle: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.18)) { showRemindersOnly.toggle() }
+        } label: {
+            Image(systemName: showRemindersOnly ? "bell.fill" : "bell")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(showRemindersOnly ? Color.black : AuraTheme.textSecondary)
+                .frame(width: 34, height: 34)
+                .background { if showRemindersOnly { Circle().fill(AuraTheme.activePill) } }
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .help(showRemindersOnly ? "Show all" : "Show reminders")
+    }
+
+    /// Opens the in-app, full-page Settings screen (no native Settings window).
+    private var settingsGear: some View {
+        Button {
+            withAnimation(.easeOut(duration: 0.22)) { settings.isPresented = true }
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 16, weight: .medium))
+                .foregroundStyle(AuraTheme.textSecondary)
+                .padding(8)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 18)
+        .padding(.trailing, 20)
+        .help("Settings")
     }
 
     // The hero IS the search field, always live: the pink caret is always
@@ -192,14 +318,27 @@ struct LibraryWindowView: View {
     private var filteredItems: [Item] {
         // While searching, show all matches across types; otherwise filter by tab.
         if isSearching { return searchResults }
+        if showRemindersOnly {
+            return store.libraryItems
+                .filter { $0.reminderAt != nil }
+                .sorted { ($0.reminderAt ?? .distantFuture) < ($1.reminderAt ?? .distantFuture) }
+        }
         if selectedTab == .all { return store.libraryItems }
         return store.libraryItems.filter { ContentTab.tabs(for: $0).contains(selectedTab) }
     }
 
     private var emptyTitle: String {
         if isSearching { return "No matches" }
+        if showRemindersOnly { return "No reminders yet" }
         return store.libraryItems.isEmpty ? "Nothing saved yet" : "Nothing in \(selectedTab.label)"
     }
+}
+
+/// Identifiable wrapper so the composer sheet can carry its create/edit mode
+/// (the mode itself isn't `Identifiable` — the embedded `Item` isn't its identity).
+private struct ComposerSheet: Identifiable {
+    let id = UUID()
+    let mode: NoteComposerView.Mode
 }
 
 /// Configures the Library window's chrome directly on the `NSWindow`: a
@@ -208,7 +347,8 @@ struct LibraryWindowView: View {
 /// SwiftUI's `.windowStyle(.hiddenTitleBar)` because it strips
 /// `.fullScreenPrimary`, leaving the green button to only "maximize".
 private struct WindowFullScreenEnabler: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { ConfigView() }
+    let launcher: InAppComposeLauncher
+    func makeNSView(context: Context) -> NSView { ConfigView(launcher: launcher) }
     func updateNSView(_ nsView: NSView, context: Context) {
         (nsView as? ConfigView)?.applyChrome()
     }
@@ -217,21 +357,36 @@ private struct WindowFullScreenEnabler: NSViewRepresentable {
     /// after creation (so the green button only "maximizes"). We re-assert our
     /// chrome — transparent full-size title bar + `.fullScreenPrimary` — on
     /// attach, on every SwiftUI update, and on a few delayed ticks to outlast
-    /// that reset, plus a one-time observer in case it re-applies later.
+    /// that reset, plus a one-time observer in case it re-applies later. This
+    /// view also tracks key-window state into the launcher so New Note can route
+    /// to the in-app composer only while the Library is focused.
     final class ConfigView: NSView {
+        let launcher: InAppComposeLauncher
+
+        init(launcher: InAppComposeLauncher) {
+            self.launcher = launcher
+            super.init(frame: .zero)
+        }
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             guard let window else { return }
             applyChrome()
+            launcher.isLibraryKey = window.isKeyWindow
             for delay in [0.1, 0.5, 1.0, 2.0, 3.0] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.applyChrome() }
             }
             NotificationCenter.default.addObserver(
-                self, selector: #selector(reapply),
+                self, selector: #selector(didBecomeKey),
                 name: NSWindow.didBecomeKeyNotification, object: window)
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(didResignKey),
+                name: NSWindow.didResignKeyNotification, object: window)
         }
 
-        @objc private func reapply() { applyChrome() }
+        @objc private func didBecomeKey() { applyChrome(); launcher.isLibraryKey = true }
+        @objc private func didResignKey() { launcher.isLibraryKey = false }
 
         func applyChrome() {
             guard let window else { return }

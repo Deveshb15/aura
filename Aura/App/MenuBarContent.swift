@@ -4,6 +4,7 @@ struct MenuBarContent: View {
     let composeLauncher: ComposeLauncher
     @Environment(\.openWindow) private var openWindow
     @Environment(DataStore.self) private var dataStore
+    @Environment(SettingsPresenter.self) private var settings
     @EnvironmentObject private var updater: SparkleUpdater
 
     var body: some View {
@@ -26,8 +27,12 @@ struct MenuBarContent: View {
         Button("Check for Updates…") { updater.checkForUpdates() }
             .disabled(!updater.canCheckForUpdates)
 
-        SettingsLink { Text("Settings…") }
-            .keyboardShortcut(",")
+        Button("Settings…") {
+            NSApp.activate(ignoringOtherApps: true)
+            openWindow(id: "library")
+            settings.isPresented = true
+        }
+        .keyboardShortcut(",")
 
         Button("Quit Aura") {
             NSApp.terminate(nil)
