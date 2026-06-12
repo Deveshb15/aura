@@ -41,6 +41,7 @@ final class AppEnvironment {
     let settingsPresenter = SettingsPresenter()
     let toastCenter = ToastCenter()
     let updater = SparkleUpdater()
+    let xBridge: XBookmarkBridge
 
     init() {
         do {
@@ -50,8 +51,10 @@ final class AppEnvironment {
             // Point the source-logo cache at the shared Assets/ directory.
             LogoService.configure(baseURL: assetStore.baseURL)
             self.dbPool = dbPool
-            self.dataStore = DataStore(dbPool: dbPool, assetStore: assetStore)
+            let dataStore = DataStore(dbPool: dbPool, assetStore: assetStore)
+            self.dataStore = dataStore
             self.clipboardWatcher = ClipboardWatcher()
+            self.xBridge = XBookmarkBridge(dataStore: dataStore)
         } catch {
             fatalError("Aura failed to initialize storage: \(error)")
         }

@@ -25,6 +25,10 @@ final class DataStore {
     @ObservationIgnored private var itemsCancellable: AnyDatabaseCancellable?
     @ObservationIgnored private var collectionsCancellable: AnyDatabaseCancellable?
 
+    /// Strictly-increasing stamp for X-bookmark saves so each new sync lands
+    /// above the previous one (the library orders by `createdAt` desc).
+    @ObservationIgnored private var lastXStamp = Date.distantPast
+
     init(dbPool: DatabasePool, assetStore: AssetStore) {
         self.dbPool = dbPool
         self.assetStore = assetStore
@@ -743,5 +747,95 @@ final class DataStore {
         let trimmed = string.trimmingCharacters(in: .whitespacesAndNewlines)
         let firstLine = trimmed.split(whereSeparator: \.isNewline).first.map(String.init) ?? trimmed
         return String(firstLine.prefix(80))
+    }
+}
+
+// MARK: - X (Twitter) bookmark sync
+
+extension DataStore {
+    /// Saves one bookmarked tweet as a `.url` item, deduped by status id.
+    /// Inserts the text immediately (so it appears live) and downloads the
+    /// hero image + author avatar in the background, mirroring `enrichLink`.
+    func saveXTweet(_ tweet: XTweet) async -> XSaveOutcome {
+        guard let statusId = tweet.statusId, !tweet.tweetUrl.isEmpty else {
+            return XSaveOutcome(ok: false, duplicate: false)
+        }
+        if await xTweetExists(statusId: statusId) {
+            return XSaveOutcome(ok: true, duplicate: true)
+        }
+
+        let item = XBookmarkMapper.makeItem(from: tweet, createdAt: nextXStamp())
+        do {
+            try await dbPool.write { db in try item.insert(db) }
+        } catch {
+            NSLog("Aura: X bookmark insert failed: \(error)")
+            return XSaveOutcome(ok: false, duplicate: false)
+        }
+        enrichXItem(id: item.id, imageURL: tweet.bestImageURL, avatarURL: tweet.authorAvatarUrl)
+        return XSaveOutcome(ok: true, duplicate: false)
+    }
+
+    /// True when a `.url` item already points at this tweet (matches the
+    /// permalink's `/status/<id>` suffix, optionally followed by a query).
+    private func xTweetExists(statusId: String) async -> Bool {
+        let endsWith = "%/status/\(statusId)"
+        let withQuery = "%/status/\(statusId)?%"
+        return (try? await dbPool.read { db in
+            let count = try Int.fetchOne(
+                db,
+                sql: "SELECT COUNT(*) FROM item WHERE type = ? AND (textContent LIKE ? OR textContent LIKE ?)",
+                arguments: [ItemType.url.rawValue, endsWith, withQuery]) ?? 0
+            return count > 0
+        }) ?? false
+    }
+
+    /// Monotonic import-time stamp: each save gets a `createdAt` strictly newer
+    /// than the last, so a burst of synced bookmarks keeps a stable top order.
+    private func nextXStamp() -> Date {
+        let now = Date()
+        let stamp = now > lastXStamp ? now : lastXStamp.addingTimeInterval(0.001)
+        lastXStamp = stamp
+        return stamp
+    }
+
+    /// Downloads the tweet's image + avatar off the main actor and updates the
+    /// row in place (the grid upgrades live via the item observation).
+    private func enrichXItem(id: String, imageURL: String?, avatarURL: String?) {
+        let assetStore = self.assetStore
+        let dbPool = self.dbPool
+        Task.detached(priority: .utility) {
+            var imageData: Data?
+            var iconData: Data?
+            if let imageURL, let url = URL(string: imageURL) { imageData = await DataStore.downloadData(from: url) }
+            if let avatarURL, let url = URL(string: avatarURL) { iconData = await DataStore.downloadData(from: url) }
+            guard imageData != nil || iconData != nil else { return }
+
+            guard var item = try? await dbPool.read({ db in try Item.fetchOne(db, key: id) }) else { return }
+            if let imageData {
+                let toStore = ThumbnailService.make(fromImageData: imageData)?.data ?? imageData
+                if let stored = try? assetStore.storeImage(toStore, subdir: "og") {
+                    item.ogImagePath = stored.relativePath
+                }
+            }
+            if let iconData, let stored = try? assetStore.storeImage(iconData, subdir: "favicon") {
+                item.faviconPath = stored.relativePath
+            }
+            item.updatedAt = Date()
+            try? await dbPool.write { db in try item.update(db) }
+        }
+    }
+
+    private static func downloadData(from url: URL, maxBytes: Int = 8 * 1024 * 1024) async -> Data? {
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 12
+        request.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Aura",
+                         forHTTPHeaderField: "User-Agent")
+        do {
+            let (data, response) = try await URLSession.shared.data(for: request)
+            if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) { return nil }
+            return data.count <= maxBytes ? data : nil
+        } catch {
+            return nil
+        }
     }
 }

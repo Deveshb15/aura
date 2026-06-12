@@ -22,6 +22,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // so the first search is semantic, not keyword-only.
         Task.detached(priority: .utility) { await EmbeddingService.shared.prepare() }
 
+        // X bookmark sync: start the loopback bridge the browser extension's
+        // native host talks to, and (re)install the native-messaging manifests
+        // into any installed Chromium-family browsers.
+        env.xBridge.start()
+        Task.detached(priority: .utility) { XHostManifestInstaller.install() }
+
         let controller = NotchController(state: NotchStateModel(), dataStore: env.dataStore)
         let launcher = env.libraryLauncher
         controller.onOpenLibrary = { launcher.open?() }
