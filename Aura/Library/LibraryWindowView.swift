@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// The main library window, redesigned to match the Figma: a near-black canvas,
-/// a centered "Capture Aura" serif wordmark, a giant serif "Ask your Memory…"
+/// a centered Carpet logo wordmark, a giant serif "Ask your Memory…"
 /// hero that doubles as the search field, content-type tabs, and the bento grid.
 struct LibraryWindowView: View {
     @Environment(DataStore.self) private var store
@@ -75,7 +75,7 @@ struct LibraryWindowView: View {
                     case .create:
                         Task { await store.saveNote(text: result.text,
                                                     reminderDate: result.reminderAt,
-                                                    sourceApp: "Aura") }
+                                                    sourceApp: "Carpet") }
                     case .edit(let item):
                         Task { await store.updateNote(item, text: result.text,
                                                       reminderDate: result.reminderAt) }
@@ -142,10 +142,12 @@ struct LibraryWindowView: View {
     // MARK: - Header
 
     private var wordmark: some View {
-        Text("Capture Aura")
-            .font(AuraFont.serif(21, .medium))
-            .foregroundStyle(AuraTheme.textPrimary)
+        Image("LogoWithText")
+            .resizable()
+            .scaledToFit()
+            .frame(height: 44)
             .frame(maxWidth: .infinity)
+            .accessibilityLabel("Carpet")
     }
 
     /// Header affordance to compose a note in-app (also bound to ⌘N).

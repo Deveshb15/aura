@@ -330,9 +330,9 @@ struct SettingsScreen: View {
     /// before any (potentially slow) file copying begins.
     private func startExport() {
         let panel = NSSavePanel()
-        panel.title = "Export Aura Vault"
+        panel.title = "Export Carpet Vault"
         panel.prompt = "Export"
-        panel.nameFieldStringValue = "Aura Export \(Self.fileDateStamp()).zip"
+        panel.nameFieldStringValue = "Carpet Export \(Self.fileDateStamp()).zip"
         panel.allowedContentTypes = [.zip]
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
@@ -418,7 +418,7 @@ struct SettingsScreen: View {
             Text("What's in the export")
                 .font(AuraFont.serif(16, .medium))
                 .foregroundStyle(AuraTheme.textPrimary)
-            Text("A .zip you can open anywhere — each saved item becomes its own file, grouped into Text, Links, Images, Files and Colors folders, plus an aura-export.json with the details.")
+            Text("A .zip you can open anywhere — each saved item becomes its own file, grouped into Text, Links, Images, Files and Colors folders, plus a carpet-export.json with the details.")
                 .font(.system(size: 12))
                 .foregroundStyle(AuraTheme.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -436,15 +436,15 @@ struct SettingsScreen: View {
                 .foregroundStyle(AuraTheme.textPrimary)
 
             VStack(alignment: .leading, spacing: 9) {
-                xStep("1", "Install the Aura browser extension once",
-                      "In Chrome, Brave, Edge or Arc: open the Extensions page, turn on Developer mode, then “Load unpacked” and choose the extension folder inside Aura.")
+                xStep("1", "Install the Carpet browser extension once",
+                      "In Chrome, Brave, Edge or Arc: open the Extensions page, turn on Developer mode, then “Load unpacked” and choose the extension folder inside Carpet.")
                 xStep("2", "Bookmark on X like normal",
-                      "While you’re on x.com, anything you bookmark is saved to Aura automatically — author, text and image included. Keep Aura running.")
+                      "While you’re on x.com, anything you bookmark is saved to Carpet automatically — author, text and image included. Keep Carpet running.")
                 xStep("3", "Bring in your history",
                       "“Import my bookmarks” opens your X bookmarks and pulls in up to 400 existing ones as it scrolls.")
             }
 
-            Text("Aura only reads your bookmarks page’s own data while you’re on X — no passwords, no background access, nothing leaves your Mac.")
+            Text("Carpet only reads your bookmarks page’s own data while you’re on X — no passwords, no background access, nothing leaves your Mac.")
                 .font(.system(size: 11))
                 .foregroundStyle(AuraTheme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)

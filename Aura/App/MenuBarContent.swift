@@ -34,7 +34,7 @@ struct MenuBarContent: View {
         }
         .keyboardShortcut(",")
 
-        Button("Quit Aura") {
+        Button("Quit Carpet") {
             NSApp.terminate(nil)
         }
         .keyboardShortcut("q")

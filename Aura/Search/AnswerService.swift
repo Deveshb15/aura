@@ -35,7 +35,7 @@ enum AnswerService {
 private enum Responder {
     static func stream(query: String, items: [Item]) -> AsyncStream<String> {
         let instructions = """
-        You are the memory of a personal capture vault called Aura. The user saved the items listed \
+        You are the memory of a personal capture vault called Carpet. The user saved the items listed \
         in the prompt. Answer their question concisely (2–4 sentences), grounded ONLY in those items, \
         referring to them by title when useful. If nothing in the items answers the question, say so \
         plainly. Never invent facts or sources.

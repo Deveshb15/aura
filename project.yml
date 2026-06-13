@@ -7,8 +7,8 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.0"
-    MARKETING_VERSION: "1.7.0"
-    CURRENT_PROJECT_VERSION: "13"
+    MARKETING_VERSION: "2.0.0"
+    CURRENT_PROJECT_VERSION: "14"
     DEVELOPMENT_TEAM: ""
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "-"
@@ -33,7 +33,7 @@ targets:
       - path: Aura
     settings:
       base:
-        PRODUCT_NAME: Aura
+        PRODUCT_NAME: Carpet
         PRODUCT_BUNDLE_IDENTIFIER: app.captureaura
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_FILE: Aura/Info.plist

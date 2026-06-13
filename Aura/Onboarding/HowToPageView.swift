@@ -35,7 +35,7 @@ struct HowToPage: Identifiable {
         HowToPage(
             kind: .reminder,
             title: "Reminders, just write them",
-            detail: "Start a note with “remind me…” and Aura reads the time and sets a notification — “remind me to call mom tomorrow at 3pm” just works."
+            detail: "Start a note with “remind me…” and Carpet reads the time and sets a notification — “remind me to call mom tomorrow at 3pm” just works."
         ),
         HowToPage(
             kind: .dragSave,

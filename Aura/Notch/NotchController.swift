@@ -380,7 +380,7 @@ final class NotchController {
                 let reminderDate = parse.isReminder ? parse.date : nil
                 await store.saveNote(text: trimmed,
                                      reminderDate: reminderDate,
-                                     sourceApp: "Aura Quick Note")
+                                     sourceApp: "Carpet Quick Note")
             }
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
         }

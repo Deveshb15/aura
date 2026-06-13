@@ -44,7 +44,7 @@ struct WelcomeScreen: View {
                 .opacity(reveal >= 1 ? (reveal >= 3 ? 0.6 : 0.95) : 0)
                 .animation(.smooth(duration: 0.6), value: reveal)
 
-            Image("AuraLogo")
+            Image("CarpetLogo")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 128, height: 128)
@@ -59,7 +59,7 @@ struct WelcomeScreen: View {
 
     private var greeting: some View {
         VStack(spacing: 10) {
-            Text("Welcome to Aura")
+            Text("Welcome to Carpet")
                 .font(AuraFont.serif(36, .semibold, .tall))
                 .foregroundStyle(AuraTheme.textPrimary)
             Text("Your quiet little vault that lives in the notch.")

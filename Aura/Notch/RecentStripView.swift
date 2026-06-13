@@ -10,7 +10,7 @@ struct NotchExpandedView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Label("Aura", systemImage: "tray.full.fill")
+                Label("Carpet", systemImage: "tray.full.fill")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.white.opacity(0.85))
                 Spacer()

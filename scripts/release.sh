@@ -13,15 +13,15 @@
 #       xcrun notarytool store-credentials "touchgrass-notary" \
 #         --apple-id "<your-apple-id>" --team-id "728M4WMSGG" --password "<app-specific-password>"
 #
-# After it runs, upload dist/Aura-<version>.dmg to the matching GitHub Release and
+# After it runs, upload dist/Carpet-<version>.dmg to the matching GitHub Release and
 # commit the regenerated docs/appcast.xml — the appcast's enclosure URL already
 # points at that release asset.
 #
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP_NAME="Aura"
-SCHEME="Aura"
+APP_NAME="Carpet"
+SCHEME="Aura"   # XcodeGen target/scheme name is still "Aura"; product is Carpet.app via PRODUCT_NAME
 SIGN_ID="Developer ID Application: Pratyush Singh (728M4WMSGG)"
 ENTITLEMENTS="Aura/Aura.entitlements"
 NOTARY_PROFILE="${NOTARY_PROFILE:-}"
@@ -39,7 +39,7 @@ DL_PREFIX="https://github.com/$REPO/releases/download/v$VERSION/"
 
 step() { printf '\n\033[1;36m▶ %s\033[0m\n' "$1"; }
 
-step "Regenerating project + building Release (unsigned) — Aura $VERSION"
+step "Regenerating project + building Release (unsigned) — $APP_NAME $VERSION"
 xcodegen generate >/dev/null
 # Universal (arm64 + x86_64) so Intel Macs are supported too; the AI-answer
 # layer is runtime-gated to Apple Silicon, the rest works everywhere.
@@ -63,6 +63,12 @@ done
 codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$SPARKLE_FW/Versions/B/Updater.app"
 codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$SPARKLE_FW/Versions/B/Autoupdate"
 codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$SPARKLE_FW"
+
+step "Signing the embedded native-messaging helper (aura-x-host)"
+# A nested Mach-O in Contents/MacOS must be signed before the outer bundle, or
+# the app-level codesign fails with "code object is not signed at all". No app
+# entitlements — it's a standalone stdio host.
+codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$APP_PATH/Contents/MacOS/aura-x-host"
 
 step "Code-signing the app (Developer ID + Hardened Runtime + secure timestamp)"
 codesign --force --options runtime --timestamp \

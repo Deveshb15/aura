@@ -6,13 +6,13 @@ import GRDB
 ///
 /// Layout (only non-empty subfolders are created):
 /// ```
-/// Aura Export 2026-06-12/
+/// Carpet Export 2026-06-12/
 ///   Text/    0001 First line.txt
 ///   Links/   0002 host — title.txt
 ///   Images/  0003 screenshot.png      (original bytes)
 ///   Files/   0004 report.pdf          (original file, original name)
 ///   Colors/  0005 #FF5733.txt
-///   aura-export.json                  (metadata manifest for every item)
+///   carpet-export.json                (metadata manifest for every item)
 /// ```
 /// Originals are copied straight from `Assets/`; text/links/colors are written
 /// as `.txt`. Each filename is prefixed with a zero-padded capture-order index,
@@ -28,7 +28,7 @@ struct VaultExporter {
         var errorDescription: String? {
             switch self {
             case .noItems: return "There are no saved items to export."
-            case .zipFailed: return "Aura couldn't create the export archive."
+            case .zipFailed: return "Carpet couldn't create the export archive."
             }
         }
     }
@@ -47,7 +47,7 @@ struct VaultExporter {
         let collectionNames = Dictionary(collections.map { ($0.id, $0.name) },
                                          uniquingKeysWith: { first, _ in first })
         let assetBase = assetStore.baseURL
-        let folderName = "Aura Export \(Self.dateStamp())"
+        let folderName = "Carpet Export \(Self.dateStamp())"
 
         // File I/O and zipping are synchronous and potentially large, so run them
         // off the main actor. Everything passed in is Sendable (value types + URL).
@@ -94,7 +94,7 @@ struct VaultExporter {
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
         encoder.dateEncodingStrategy = .iso8601
         let manifestData = try encoder.encode(manifest)
-        try manifestData.write(to: root.appendingPathComponent("aura-export.json"), options: .atomic)
+        try manifestData.write(to: root.appendingPathComponent("carpet-export.json"), options: .atomic)
 
         return try zipDirectory(at: root, fm: fm)
     }
@@ -253,7 +253,7 @@ struct VaultExporter {
     }
 }
 
-/// One row in `aura-export.json`. Mirrors the durable, user-meaningful columns of
+/// One row in `carpet-export.json`. Mirrors the durable, user-meaningful columns of
 /// an item plus the relative path of the exported file it corresponds to.
 private struct ManifestEntry: Encodable {
     let file: String

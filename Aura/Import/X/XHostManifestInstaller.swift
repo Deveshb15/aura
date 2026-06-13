@@ -40,7 +40,7 @@ enum XHostManifestInstaller {
 
         let manifest: [String: Any] = [
             "name": hostName,
-            "description": "Aura X bookmark bridge",
+            "description": "Carpet X bookmark bridge",
             "path": helperPath,
             "type": "stdio",
             "allowed_origins": extensionIDs.map { "chrome-extension://\($0)/" },

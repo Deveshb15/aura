@@ -61,8 +61,8 @@ struct DMGBackgroundArt: View {
                            center: UnitPoint(x: 0.5, y: 0.0),
                            startRadius: 0, endRadius: W * 0.5)
 
-            // Wordmark — "Capture Aura", mirroring the app header.
-            Text("Capture Aura")
+            // Wordmark — "Capture Carpet", mirroring the app header.
+            Text("Capture Carpet")
                 .font(.custom("AwesomeSerif-MediumRegular", size: 30))
                 .foregroundStyle(c(textPrimary))
                 .position(x: W / 2, y: 58)
@@ -81,7 +81,7 @@ struct DMGBackgroundArt: View {
                 .position(x: (appCenter.x + appsCenter.x) / 2, y: appCenter.y)
                 .shadow(color: c(accentRose, 0.45), radius: 7, y: 2)
 
-            Text("drag Aura into your Applications folder")
+            Text("drag Carpet into your Applications folder")
                 .font(.system(size: 14, weight: .medium, design: .default))
                 .foregroundStyle(c(textSecondary))
                 .position(x: W / 2, y: 372)
