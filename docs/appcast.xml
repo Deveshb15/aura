@@ -3,6 +3,18 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>2.0.1</title>
+            <pubDate>Sat, 13 Jun 2026 19:58:47 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>15</sparkle:version>
+            <sparkle:shortVersionString>2.0.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>A prettier welcome</h2>
+<p>The installer now greets you with Carpet's blue-sky look — clouds and all — to match the app. No functional changes; just a nicer first impression.</p>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.0.1/Carpet-2.0.1.dmg" length="16820052" type="application/octet-stream" sparkle:edSignature="ZUGNjJhVXOeHVBZsqbVlLOzXksSYwAOI+0z0CRuGhDVTwxBE42rz55IMUi/tLcAFc7Sd89OrefJb060cdPpJBw=="/>
+        </item>
+        <item>
             <title>2.0.0</title>
             <pubDate>Sat, 13 Jun 2026 19:22:11 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -71,29 +83,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.5.0/Aura-1.5.0.dmg" length="10932515" type="application/octet-stream" sparkle:edSignature="hdxwWfPPQD0XxWeugSTRzMTz2z2sMKUOMNBo+0pQo843KBkfk+QjZ32XUjB5ojlZAxnlJrNUCsycQ3blj4kwCg=="/>
-        </item>
-        <item>
-            <title>1.4.0</title>
-            <pubDate>Thu, 11 Jun 2026 23:41:47 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>10</sparkle:version>
-            <sparkle:shortVersionString>1.4.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>Ask in plain language</h2>
-<p>Search now understands full, conversational questions. "<strong>someone is building a consumer product — show it to me</strong>" finds the right item just like the bare keywords would. Aura distils your query to what matters and ignores the filler, so long natural asks rank as well as short ones — all on-device.</p>
-<h2>Richer cards</h2>
-<ul>
-  <li><strong>Source logos</strong> — every saved item shows where it came from with the real brand logo (Slack, Notion, Brave, X…) and a timestamp.</li>
-  <li><strong>Type icons</strong> on the All / Text / Images / Links / Music / Videos tabs.</li>
-  <li>Cleaner notch tiles — hover any recent item to <strong>Copy</strong> or <strong>Open</strong> it; type badges step out of the way of photos.</li>
-</ul>
-<h2>Quick notes &amp; search polish</h2>
-<ul>
-  <li>A <strong>back button</strong> in the notch note composer.</li>
-  <li>The "Ask your Memory…" field is always ready — pink caret on open, placeholder until you type.</li>
-</ul>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.4.0/Aura-1.4.0.dmg" length="10919072" type="application/octet-stream" sparkle:edSignature="OQvq2x7K0VqYljkyEbdwvUbW1JRVn6Mfp5GTEls/gsbDZbr0coZnHh5DWQ6D8bqMarHDEqK13JHNZOYY67ZRBw=="/>
         </item>
     </channel>
 </rss>
