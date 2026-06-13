@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0.25" y2="1">
+      <stop offset="0" stop-color="#61a9e5"/>
+      <stop offset="0.45" stop-color="#4c9adc"/>
+      <stop offset="1" stop-color="#549fe0"/>
+    </linearGradient>
+    <!-- Cumulus: fractal noise carved into crisp clumps, with a cool
+         underside shadow peeking out below the white -->
+    <filter id="clouds" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.0036 0.0052" numOctaves="5" seed="8" result="noise"/>
+      <feColorMatrix in="noise" type="matrix"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                1.5 0 0 0 -0.38" result="lum"/>
+      <feComponentTransfer in="lum" result="shaped">
+        <feFuncA type="table" tableValues="0 0 0 0.06 0.4 0.8 0.97 1 1"/>
+      </feComponentTransfer>
+      <feOffset in="shaped" dx="0" dy="7" result="shapedDown"/>
+      <feFlood flood-color="#bdd4ea" result="shadowCol"/>
+      <feComposite in="shadowCol" in2="shapedDown" operator="in" result="cloudShadow"/>
+      <feFlood flood-color="#ffffff" result="whiteCol"/>
+      <feComposite in="whiteCol" in2="shaped" operator="in" result="cloudWhite"/>
+      <feMerge>
+        <feMergeNode in="cloudShadow"/>
+        <feMergeNode in="cloudWhite"/>
+      </feMerge>
+    </filter>
+    <!-- Thin horizontal cirrus haze -->
+    <filter id="wisps" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.004 0.014" numOctaves="4" seed="23" result="noise"/>
+      <feColorMatrix in="noise" type="matrix"
+        values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                1 0 0 0 -0.3" result="lum"/>
+      <feComponentTransfer in="lum" result="shaped">
+        <feFuncA type="table" tableValues="0 0 0.05 0.18 0.38 0.5"/>
+      </feComponentTransfer>
+      <feFlood flood-color="#ffffff" result="whiteCol"/>
+      <feComposite in="whiteCol" in2="shaped" operator="in"/>
+    </filter>
+    <!-- Film grain -->
+    <filter id="grain">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <!-- Feathered placement masks: clouds cluster at the corners and
+         edges, keeping the center open. The turbulence supplies the
+         crisp detail; this only gates where clouds may appear. -->
+    <filter id="mask-soften">
+      <feGaussianBlur stdDeviation="40"/>
+    </filter>
+    <mask id="cloud-mask">
+      <rect width="1600" height="900" fill="black"/>
+      <g fill="white" filter="url(#mask-soften)">
+        <ellipse cx="1420" cy="30" rx="480" ry="280"/>
+        <ellipse cx="1100" cy="110" rx="240" ry="140" opacity="0.9"/>
+        <ellipse cx="1600" cy="340" rx="270" ry="190" opacity="0.95"/>
+        <ellipse cx="160" cy="100" rx="280" ry="170" opacity="0.9"/>
+        <ellipse cx="450" cy="190" rx="170" ry="100" opacity="0.6"/>
+        <ellipse cx="20" cy="630" rx="300" ry="200" opacity="0.95"/>
+        <ellipse cx="330" cy="890" rx="440" ry="240"/>
+        <ellipse cx="1260" cy="900" rx="480" ry="250"/>
+        <ellipse cx="1600" cy="700" rx="290" ry="200" opacity="0.95"/>
+        <ellipse cx="800" cy="950" rx="300" ry="150" opacity="0.75"/>
+      </g>
+    </mask>
+    <mask id="wisp-mask">
+      <rect width="1600" height="900" fill="black"/>
+      <g fill="white" filter="url(#mask-soften)">
+        <ellipse cx="950" cy="40" rx="260" ry="110" opacity="0.6"/>
+        <ellipse cx="640" cy="120" rx="200" ry="90" opacity="0.45"/>
+        <ellipse cx="1380" cy="480" rx="240" ry="110" opacity="0.5"/>
+        <ellipse cx="160" cy="380" rx="200" ry="100" opacity="0.45"/>
+      </g>
+    </mask>
+  </defs>
+
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <g mask="url(#wisp-mask)" opacity="0.55">
+    <rect width="1600" height="900" filter="url(#wisps)"/>
+  </g>
+  <g mask="url(#cloud-mask)">
+    <rect width="1600" height="900" filter="url(#clouds)"/>
+  </g>
+  <rect width="1600" height="900" filter="url(#grain)" opacity="0.07"/>
+</svg>

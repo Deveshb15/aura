@@ -5,14 +5,15 @@
 //       (tiffutil -cathidpicheck) so the background maps 1:1 to the 660×420-point window
 //       yet stays crisp on retina — see scripts/release.sh.
 //
-// Aura's dark serif identity: near-black canvas + a low rose glow, the "Capture Aura"
-// Awesome Serif wordmark with its pink accent dot, two frosted pads where the app icon
-// and the Applications alias rest (kept light so Finder's icon labels stay legible on the
-// dark canvas), and a rose arrow between them. The drop-zone centers MUST match the
+// Carpet's sky identity: the bright blue cloud sky (Tools/sky.png, rasterized from the
+// shared sky.svg by Tools/render_sky.sh — clouds frame the corners, center open), the
+// "Capture Carpet" Awesome Serif wordmark in white, two soft frosted-white cards where the
+// app icon and the Applications alias rest (so the art + Finder's black icon labels stay
+// crisp on the sky), and a rose arrow between them. The drop-zone centers MUST match the
 // create-dmg --icon / --app-drop-link coordinates (app at 180,205 — Applications at 480,205).
 //
-// Self-contained: inlines RGBA + c() and registers the bundled Awesome Serif so it compiles
-// standalone and never enters the app target.
+// Self-contained: inlines RGBA + c(), loads Tools/sky.png, and registers the bundled Awesome
+// Serif so it compiles standalone and never enters the app target.
 
 import SwiftUI
 import AppKit
@@ -45,31 +46,31 @@ private let appCenter  = CGPoint(x: 180, y: 205)
 private let appsCenter = CGPoint(x: 480, y: 205)
 
 struct DMGBackgroundArt: View {
-    // AuraTheme hexes.
-    private let bgTop = 0x0B0B0D, bgBot = 0x141417
-    private let textPrimary = 0xF2F2F3, textSecondary = 0x8B8B8E, accentRose = 0xFF5C8A
+    private let accentRose = 0xFF5C8A
+    private let shadowInk = 0x1B4368   // deep sky-shadow blue, for soft text/card shadows
+    private let sky = NSImage(contentsOfFile: "Tools/sky.png")
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [c(bgTop), c(bgBot)], startPoint: .top, endPoint: .bottom)
-            // A low rose bloom echoing the accent dot.
-            RadialGradient(colors: [c(accentRose, 0.16), c(accentRose, 0)],
-                           center: UnitPoint(x: 0.5, y: 0.92),
-                           startRadius: 0, endRadius: W * 0.55)
-            // A faint top highlight for depth.
-            RadialGradient(colors: [Color.white.opacity(0.05), Color.white.opacity(0)],
-                           center: UnitPoint(x: 0.5, y: 0.0),
-                           startRadius: 0, endRadius: W * 0.5)
+            // Sky base — clouds frame the corners, the center stays open. Falls back to a
+            // flat brand blue if sky.png is somehow missing so the render never crashes.
+            if let sky {
+                Image(nsImage: sky).resizable().frame(width: W, height: H)
+            } else {
+                c(0x4C9ADC)
+            }
 
-            // Wordmark — "Capture Carpet", mirroring the app header.
+            // Wordmark — "Capture Carpet", white like the logo wordmark.
             Text("Capture Carpet")
                 .font(.custom("AwesomeSerif-MediumRegular", size: 30))
-                .foregroundStyle(c(textPrimary))
+                .foregroundStyle(.white)
+                .shadow(color: c(shadowInk, 0.35), radius: 6, y: 1)
                 .position(x: W / 2, y: 58)
 
             Text("your captures, one drag from home")
-                .font(.system(size: 13.5, weight: .regular, design: .default))
-                .foregroundStyle(c(textSecondary))
+                .font(.system(size: 13.5, weight: .medium, design: .default))
+                .foregroundStyle(.white.opacity(0.95))
+                .shadow(color: c(shadowInk, 0.3), radius: 4, y: 1)
                 .position(x: W / 2, y: 92)
 
             pad.position(appCenter)
@@ -79,25 +80,26 @@ struct DMGBackgroundArt: View {
                 .stroke(c(accentRose), style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
                 .frame(width: 116, height: 28)
                 .position(x: (appCenter.x + appsCenter.x) / 2, y: appCenter.y)
-                .shadow(color: c(accentRose, 0.45), radius: 7, y: 2)
+                .shadow(color: c(accentRose, 0.5), radius: 7, y: 2)
 
             Text("drag Carpet into your Applications folder")
-                .font(.system(size: 14, weight: .medium, design: .default))
-                .foregroundStyle(c(textSecondary))
+                .font(.system(size: 14, weight: .semibold, design: .default))
+                .foregroundStyle(.white)
+                .shadow(color: c(shadowInk, 0.38), radius: 5, y: 1)
                 .position(x: W / 2, y: 372)
         }
         .frame(width: W, height: H)
     }
 
-    /// A soft frosted pad the real icon / Applications alias rests on. Kept light so the
-    /// black Finder icon labels stay readable against the dark canvas.
+    /// A soft frosted-white card the real icon / Applications alias rests on, so the art and
+    /// Finder's black icon labels stay crisp and pop against the blue sky.
     private var pad: some View {
-        RoundedRectangle(cornerRadius: 26, style: .continuous)
-            .fill(Color.white.opacity(0.92))
-            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.5), lineWidth: 1))
+        RoundedRectangle(cornerRadius: 28, style: .continuous)
+            .fill(Color.white.opacity(0.9))
+            .overlay(RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.95), lineWidth: 1))
             .frame(width: 168, height: 190)
-            .shadow(color: .black.opacity(0.45), radius: 16, y: 8)
+            .shadow(color: c(shadowInk, 0.32), radius: 18, y: 8)
     }
 }
 

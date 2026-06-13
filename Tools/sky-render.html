@@ -1,0 +1,14 @@
+<!doctype html>
+<!-- Wrapper that renders Tools/sky.svg exactly like the marketing site's `.sky-bg`
+     (background:#4c9adc url(sky.svg) center/cover). Screenshotted by render_sky.sh
+     with headless Chrome → Tools/sky.png, the DMG installer background base. -->
+<html>
+<head><meta charset="utf-8"><style>
+  html, body { margin: 0; padding: 0; width: 100%; height: 100%; }
+  .sky-bg {
+    position: fixed; inset: 0;
+    background: #4c9adc url('sky.svg') center / cover no-repeat;
+  }
+</style></head>
+<body><div class="sky-bg"></div></body>
+</html>
