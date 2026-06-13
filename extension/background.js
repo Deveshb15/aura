@@ -57,42 +57,57 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 });
 
 async function handleTweets(mode, tweets) {
-  if (!tweets.length) return { ok: true, imported: 0 };
+  if (!tweets.length) return { ok: true, imported: 0, duplicates: 0, failed: 0 };
   const { seen, baseline } = await readSeen();
 
-  // Forward-sync, first ever batch: silently baseline the existing archive.
+  // Forward-sync, first ever batch: silently baseline the existing archive so
+  // passive sync doesn't flood the library with the back-catalogue.
   if (mode === 'forward' && !baseline) {
     for (const t of tweets) if (t && t.tweetId) seen.add(t.tweetId);
     await writeSeen(seen, true);
-    return { ok: true, imported: 0, baseline: true };
+    return { ok: true, imported: 0, duplicates: 0, failed: 0, baseline: true };
   }
 
-  // click = the user explicitly bookmarked, so import even if "seen" (the app
-  // dedups by tweet id anyway). bulk/forward only import not-yet-seen tweets.
-  const toImport = (mode === 'click')
-    ? tweets
-    : tweets.filter((t) => t && t.tweetId && !seen.has(t.tweetId));
+  // Only FORWARD consults `seen` (so passive sync doesn't re-import the same
+  // page on every visit). bulk + click send everything and let the APP dedup
+  // by tweet id — the Aura vault is the source of truth, not this extension's
+  // separate memory. (Consulting `seen` here is what starved bulk import.)
+  const toImport = (mode === 'forward')
+    ? tweets.filter((t) => t && t.tweetId && !seen.has(t.tweetId))
+    : tweets.filter((t) => t && t.tweetUrl);
 
   if (toImport.length === 0) {
-    return { ok: true, imported: 0, duplicate: mode === 'click' };
+    return { ok: true, imported: 0, duplicates: 0, failed: 0, duplicate: mode === 'click' };
   }
 
-  // First save doubles as the reachability probe so bulk/click can report
+  // First save doubles as the reachability probe so callers can report
   // "open Aura first" immediately instead of after a long loop.
   const first = await saveTweet(toImport[0]);
   if (first.offline) return { ok: false, offline: true };
-  if (toImport[0].tweetId) seen.add(toImport[0].tweetId);
 
-  let imported = first.ok ? 1 : 0;
-  let lastDuplicate = first.duplicate;
+  let imported = 0, duplicates = 0, failed = 0;
+  const tally = (r, t) => {
+    if (r.ok && r.duplicate) duplicates += 1;
+    else if (r.ok) imported += 1;
+    else failed += 1;
+    // Record in `seen` ONLY on a confirmed result (success or already-saved),
+    // never on failure — so a transient failure can't hide a tweet forever.
+    if (r.ok && t && t.tweetId) seen.add(t.tweetId);
+  };
+  tally(first, toImport[0]);
+
   for (let i = 1; i < toImport.length; i++) {
     const r = await saveTweet(toImport[i]);
-    if (r.offline) break;
-    if (r.ok) imported += 1;
-    lastDuplicate = r.duplicate;
-    if (toImport[i].tweetId) seen.add(toImport[i].tweetId);
+    if (r.offline) { failed += (toImport.length - i); break; }
+    tally(r, toImport[i]);
   }
 
   await writeSeen(seen, true);
-  return { ok: true, imported, duplicate: mode === 'click' ? lastDuplicate : undefined };
+  console.debug('[aura] import', mode, { sent: toImport.length, imported, duplicates, failed });
+  const ok = (mode === 'click') ? (imported + duplicates > 0) : true;
+  return {
+    ok, imported, duplicates, failed,
+    duplicate: mode === 'click' ? (duplicates > 0) : undefined,
+    error: failed > 0 ? 'save failed' : undefined,
+  };
 }

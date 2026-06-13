@@ -145,6 +145,7 @@
     cacheAllTweets(json);
     if (isBookmarksEndpoint(url)) {
       const tweets = extractBookmarkEntries(json);
+      console.debug('[aura] Bookmarks response —', tweets.length, 'tweets, top:', isTopOfList(url));
       if (tweets.length) {
         window.postMessage(
           { source: 'aura-x', type: 'bookmarks', tweets, top: isTopOfList(url) },

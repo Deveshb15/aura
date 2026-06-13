@@ -34,7 +34,7 @@ window.addEventListener('message', (event) => {
         if (bulk.tweets.size >= BULK_CAP) break;
         if (t && t.tweetId && !bulk.tweets.has(t.tweetId)) { bulk.tweets.set(t.tweetId, t); grew = true; }
       }
-      if (grew) bulk.lastGrowthAt = Date.now();
+      if (grew) { bulk.lastGrowthAt = Date.now(); updateBulkControl(bulk.tweets.size); }
       if (bulk.tweets.size >= BULK_CAP) finishBulk();
     } else if (d.top) {
       // Forward-sync: only the top-of-list page is trusted, so deep manual
@@ -60,7 +60,10 @@ function maybeStartBulk() {
 function startBulk() {
   if (bulk) return;
   bulk = { tweets: new Map(), lastGrowthAt: Date.now(), startedAt: Date.now(), done: false, timer: null };
-  showToast(`Importing your X bookmarks to Aura (up to ${BULK_CAP})…`, { sticky: true });
+  // Interactive control: live count + a Stop button (and Esc) so the user can
+  // stop whenever they have enough — the scroll is newest-first, so stopping
+  // early keeps the most-recent bookmarks.
+  showBulkControl();
   // Gentle auto-scroll so X's own client paginates; the interceptor harvests
   // each page. ~1.6s cadence keeps it human-ish and under rate limits.
   bulk.timer = setInterval(() => {
@@ -77,19 +80,74 @@ function finishBulk() {
   if (!bulk || bulk.done) return;
   bulk.done = true;
   if (bulk.timer) clearInterval(bulk.timer);
+  hideBulkControl();
   // The bookmarks feed is newest-first; send oldest-first so the most
   // recently bookmarked tweet is inserted last and lands on top in Aura.
   const tweets = Array.from(bulk.tweets.values()).reverse();
   const count = tweets.length;
+  bulk = null;
+  console.debug('[aura] bulk finished — harvested', count);
   if (count === 0) {
     showToast('No bookmarks found to import.', { tone: 'error' });
-  } else {
-    chrome.runtime.sendMessage({ type: 'aura:tweets', mode: 'bulk', tweets }, (resp) => {
-      if (resp && resp.offline) showToast('Open Aura first, then import again.', { tone: 'error' });
-      else showToast(`Imported ${count} bookmark${count === 1 ? '' : 's'} to Aura.`);
-    });
+    return;
   }
-  bulk = null;
+  chrome.runtime.sendMessage({ type: 'aura:tweets', mode: 'bulk', tweets }, (resp) => {
+    if (!resp) { showToast('Import failed — is Aura running?', { tone: 'error' }); return; }
+    if (resp.offline) { showToast('Open Aura first, then import again.', { tone: 'error' }); return; }
+    const imp = resp.imported || 0, dup = resp.duplicates || 0, fail = resp.failed || 0;
+    let msg;
+    if (imp > 0) {
+      msg = `Imported ${imp} bookmark${imp === 1 ? '' : 's'} to Aura`;
+      if (dup > 0) msg += ` · ${dup} already saved`;
+    } else if (dup > 0) {
+      msg = `All ${dup} already in Aura`;
+    } else {
+      msg = fail > 0 ? `Couldn't save ${fail} bookmark${fail === 1 ? '' : 's'}` : 'Nothing imported';
+    }
+    showToast(msg, { tone: (imp === 0 && fail > 0) ? 'error' : 'ok' });
+  });
+}
+
+// ── Bulk-import control: live count + Stop button (and Esc) ──────────
+let bulkControlEl = null;
+let bulkEscHandler = null;
+function showBulkControl() {
+  if (bulkControlEl) return;
+  const el = document.createElement('div');
+  el.style.cssText = [
+    'position:fixed', 'right:24px', 'bottom:24px', 'z-index:2147483647',
+    'display:flex', 'align-items:center', 'gap:12px', 'padding:9px 9px 9px 16px',
+    'font:500 13px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif',
+    'color:rgba(255,255,255,0.96)', 'background:rgba(20,20,22,0.88)',
+    'backdrop-filter:blur(20px) saturate(1.6)', '-webkit-backdrop-filter:blur(20px) saturate(1.6)',
+    'border:0.5px solid rgba(255,255,255,0.14)', 'border-radius:999px',
+    'box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 22px rgba(0,0,0,0.28)',
+  ].join(';');
+  const label = document.createElement('span');
+  label.className = 'aura-bulk-label';
+  label.textContent = 'Gathering bookmarks… 0';
+  const btn = document.createElement('button');
+  btn.textContent = 'Stop & import';
+  btn.style.cssText = [
+    'all:unset', 'cursor:pointer', 'box-sizing:border-box', 'white-space:nowrap',
+    'font:600 12.5px/1 -apple-system,BlinkMacSystemFont,sans-serif',
+    'color:#0b0b0d', 'background:#ffffff', 'padding:8px 13px', 'border-radius:999px',
+  ].join(';');
+  btn.addEventListener('click', (e) => { e.preventDefault(); finishBulk(); });
+  el.appendChild(label);
+  el.appendChild(btn);
+  document.body.appendChild(el);
+  bulkControlEl = el;
+  bulkEscHandler = (e) => { if (e.key === 'Escape') { e.preventDefault(); finishBulk(); } };
+  window.addEventListener('keydown', bulkEscHandler, true);
+}
+function updateBulkControl(count) {
+  const label = bulkControlEl && bulkControlEl.querySelector('.aura-bulk-label');
+  if (label) label.textContent = `Gathering bookmarks… ${count}`;
+}
+function hideBulkControl() {
+  if (bulkEscHandler) { window.removeEventListener('keydown', bulkEscHandler, true); bulkEscHandler = null; }
+  if (bulkControlEl) { bulkControlEl.remove(); bulkControlEl = null; }
 }
 
 // ── Instant bookmark-click capture (works anywhere on x.com) ─────────
