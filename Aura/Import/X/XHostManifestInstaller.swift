@@ -7,9 +7,14 @@ import Foundation
 /// the app moves).
 enum XHostManifestInstaller {
     static let hostName = "app.captureaura.xhost"
-    /// Our extension's pinned ID (derived from the `key` baked into the
-    /// extension manifest). Native messaging only talks to whitelisted origins.
-    static let extensionID = "gmombdkcjjnlgcbfanhcfgabpjkajdbn"
+    /// Extension IDs allowed to talk to the host. The first is the pinned
+    /// unpacked/dev ID (derived from the `key` in the extension manifest). After
+    /// publishing to the Chrome Web Store — which assigns its OWN id and rejects
+    /// any upload containing `key` — add that store id here and rebuild.
+    static let extensionIDs = [
+        "gmombdkcjjnlgcbfanhcfgabpjkajdbn",   // unpacked / dev
+        // "<chrome-web-store-id>",            // ← paste after publishing, then rebuild
+    ]
 
     /// Browser data directories (under ~/Library/Application Support) that hold a
     /// `NativeMessagingHosts/` folder. We only write where the browser exists.
@@ -38,7 +43,7 @@ enum XHostManifestInstaller {
             "description": "Aura X bookmark bridge",
             "path": helperPath,
             "type": "stdio",
-            "allowed_origins": ["chrome-extension://\(extensionID)/"],
+            "allowed_origins": extensionIDs.map { "chrome-extension://\($0)/" },
         ]
         guard let data = try? JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys]) else { return }
 

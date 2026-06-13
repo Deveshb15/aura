@@ -4,6 +4,20 @@
   "version": "0.1.0",
   "description": "Save your X (Twitter) bookmarks into your local Aura library. Passive: reads only the bookmarks page's own data while you browse.",
 
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Aura — X bookmark sync",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+
   "//key": "Pins a stable extension ID (gmombdkcjjnlgcbfanhcfgabpjkajdbn) so Aura's native-messaging host can whitelist this extension even when loaded unpacked. Generated from a throwaway RSA keypair; the private half is never needed to load unpacked.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAutDaxsELhRD5evkQ9HDsHgmEpUUxp2BmvUWnhVRzKu9IolNbks5Vm+1PshwPG4c6HXc7aMgGJbBEanC58zoOOnZmGgCP4hF27iexM85aWsP6kJg6pJyrDcJskImz1zmCTqqArUgzXM/cqEcq3LlJrEwhiTPKeB3TAjGdtduUerWim1zULRGSw3fZ9SNrWsBVFwSv9OYuHyr+mEJstKIBAM91BNrEEjuM37tz+8PkQBFbWFcOp6GTsgsFC5zzYu8MwT83zEuvks8QMTSIMfLf3NxUW8I5ArBvOdNe1+gDQrftbOB546b5KTJO2+kHi0IcDu6Gco3q+0rcAHom/7qciQIDAQAB",
 
