@@ -12,7 +12,9 @@ const BOOKMARK_TESTID = 'bookmark';
 const tweetCache = new Map();
 
 // Bulk-import session state (only active when the user explicitly imports).
-let bulk = null; // { tweets: Map<id, tweet>, lastGrowthAt, timer, done }
+// Streams each fetched tweet to the app immediately (serialized via `chain`)
+// so a reload/stop keeps everything already sent.
+let bulk = null;
 
 // ── MAIN→isolated bridge ─────────────────────────────────────────────
 window.addEventListener('message', (event) => {
@@ -28,15 +30,29 @@ window.addEventListener('message', (event) => {
   if (d.type === 'bookmarks' && Array.isArray(d.tweets)) {
     for (const t of d.tweets) if (t && t.tweetId) tweetCache.set(t.tweetId, t);
     if (bulk && !bulk.done) {
-      // Bulk session: ingest every page (top + paginated) up to the cap.
-      let grew = false;
+      // Streaming session: send each newly-seen tweet to the app right away
+      // (serialized through bulk.chain) so it's saved as it's fetched — a
+      // reload or Stop keeps everything already sent. Dedup within the session.
+      const fresh = [];
       for (const t of d.tweets) {
-        if (bulk.tweets.size >= BULK_CAP) break;
-        if (t && t.tweetId && !bulk.tweets.has(t.tweetId)) { bulk.tweets.set(t.tweetId, t); grew = true; }
+        if (bulk.fetched >= BULK_CAP) break;
+        if (!t || !t.tweetId || !t.tweetUrl || bulk.sentIds.has(t.tweetId)) continue;
+        bulk.sentIds.add(t.tweetId);
+        // Descending stamp anchored at session start: the newest bookmark
+        // (harvested first) gets the highest stamp and stays on top as older
+        // ones stream in below.
+        t.createdAtMs = bulk.anchorMs - bulk.orderIndex;
+        bulk.orderIndex += 1;
+        bulk.fetched += 1;
+        fresh.push(t);
       }
-      if (grew) { bulk.lastGrowthAt = Date.now(); updateBulkControl(bulk.tweets.size); }
-      if (bulk.tweets.size >= BULK_CAP) finishBulk();
-    } else if (d.top) {
+      if (fresh.length) {
+        bulk.lastGrowthAt = Date.now();
+        updateBulkControl();
+        bulk.chain = bulk.chain.then(() => sendBulkBatch(fresh));
+      }
+      if (bulk.fetched >= BULK_CAP) finishBulk();
+    } else if (!bulk && d.top) {
       // Forward-sync: only the top-of-list page is trusted, so deep manual
       // scrolling never floods. The background owns the silent baseline.
       chrome.runtime.sendMessage({ type: 'aura:tweets', mode: 'forward', tweets: d.tweets });
@@ -59,7 +75,19 @@ function maybeStartBulk() {
 
 function startBulk() {
   if (bulk) return;
-  bulk = { tweets: new Map(), lastGrowthAt: Date.now(), startedAt: Date.now(), done: false, timer: null };
+  bulk = {
+    sentIds: new Set(),          // dedup within this session
+    anchorMs: Date.now(),        // base for descending per-tweet timestamps
+    orderIndex: 0,
+    fetched: 0,                  // count handed off to the app
+    chain: Promise.resolve(),    // serializes the streamed sends
+    stats: { imported: 0, duplicates: 0, failed: 0 },
+    offline: false,
+    lastGrowthAt: Date.now(),
+    startedAt: Date.now(),
+    done: false,
+    timer: null,
+  };
   // Interactive control: live count + a Stop button (and Esc) so the user can
   // stop whenever they have enough — the scroll is newest-first, so stopping
   // early keeps the most-recent bookmarks.
@@ -76,35 +104,52 @@ function startBulk() {
   }, 1600);
 }
 
+// Send one streamed batch to the app and fold its result into the running
+// stats. Serialized via bulk.chain, so saves happen one after another.
+function sendBulkBatch(tweets) {
+  return new Promise((resolve) => {
+    chrome.runtime.sendMessage({ type: 'aura:tweets', mode: 'bulk', tweets }, (resp) => {
+      if (bulk) {
+        if (resp && resp.offline) {
+          bulk.offline = true;
+          if (bulk.timer) { clearInterval(bulk.timer); bulk.timer = null; }
+        } else if (resp) {
+          bulk.stats.imported += resp.imported || 0;
+          bulk.stats.duplicates += resp.duplicates || 0;
+          bulk.stats.failed += resp.failed || 0;
+        }
+        updateBulkControl();
+      }
+      resolve();
+    });
+  });
+}
+
+// Stop scrolling and, once the in-flight stream drains, report the real totals.
+// Everything fetched up to now has already been sent/saved.
 function finishBulk() {
   if (!bulk || bulk.done) return;
   bulk.done = true;
-  if (bulk.timer) clearInterval(bulk.timer);
-  hideBulkControl();
-  // The bookmarks feed is newest-first; send oldest-first so the most
-  // recently bookmarked tweet is inserted last and lands on top in Aura.
-  const tweets = Array.from(bulk.tweets.values()).reverse();
-  const count = tweets.length;
-  bulk = null;
-  console.debug('[aura] bulk finished — harvested', count);
-  if (count === 0) {
-    showToast('No bookmarks found to import.', { tone: 'error' });
-    return;
-  }
-  chrome.runtime.sendMessage({ type: 'aura:tweets', mode: 'bulk', tweets }, (resp) => {
-    if (!resp) { showToast('Import failed — is Aura running?', { tone: 'error' }); return; }
-    if (resp.offline) { showToast('Open Aura first, then import again.', { tone: 'error' }); return; }
-    const imp = resp.imported || 0, dup = resp.duplicates || 0, fail = resp.failed || 0;
-    let msg;
-    if (imp > 0) {
-      msg = `Imported ${imp} bookmark${imp === 1 ? '' : 's'} to Aura`;
-      if (dup > 0) msg += ` · ${dup} already saved`;
-    } else if (dup > 0) {
-      msg = `All ${dup} already in Aura`;
+  if (bulk.timer) { clearInterval(bulk.timer); bulk.timer = null; }
+  const b = bulk;
+  b.chain = b.chain.then(() => {
+    hideBulkControl();
+    const { imported, duplicates, failed } = b.stats;
+    console.debug('[aura] bulk finished —', { fetched: b.fetched, imported, duplicates, failed, offline: b.offline });
+    if (b.offline) {
+      showToast('Open Aura first, then import again.', { tone: 'error' });
+    } else if (b.fetched === 0) {
+      showToast('No bookmarks found to import.', { tone: 'error' });
+    } else if (imported > 0) {
+      showToast(`Imported ${imported} bookmark${imported === 1 ? '' : 's'} to Aura`
+        + (duplicates > 0 ? ` · ${duplicates} already saved` : ''));
+    } else if (duplicates > 0) {
+      showToast(`All ${duplicates} already in Aura`);
     } else {
-      msg = fail > 0 ? `Couldn't save ${fail} bookmark${fail === 1 ? '' : 's'}` : 'Nothing imported';
+      showToast(failed > 0 ? `Couldn't save ${failed} bookmark${failed === 1 ? '' : 's'}` : 'Nothing imported',
+        { tone: 'error' });
     }
-    showToast(msg, { tone: (imp === 0 && fail > 0) ? 'error' : 'ok' });
+    if (bulk === b) bulk = null;
   });
 }
 
@@ -125,7 +170,7 @@ function showBulkControl() {
   ].join(';');
   const label = document.createElement('span');
   label.className = 'aura-bulk-label';
-  label.textContent = 'Gathering bookmarks… 0';
+  label.textContent = 'Importing your bookmarks…';
   const btn = document.createElement('button');
   btn.textContent = 'Stop & import';
   btn.style.cssText = [
@@ -141,9 +186,11 @@ function showBulkControl() {
   bulkEscHandler = (e) => { if (e.key === 'Escape') { e.preventDefault(); finishBulk(); } };
   window.addEventListener('keydown', bulkEscHandler, true);
 }
-function updateBulkControl(count) {
+function updateBulkControl() {
   const label = bulkControlEl && bulkControlEl.querySelector('.aura-bulk-label');
-  if (label) label.textContent = `Gathering bookmarks… ${count}`;
+  if (!label || !bulk) return;
+  const saved = bulk.stats.imported + bulk.stats.duplicates;
+  label.textContent = saved > 0 ? `Importing… ${saved} saved` : 'Importing your bookmarks…';
 }
 function hideBulkControl() {
   if (bulkEscHandler) { window.removeEventListener('keydown', bulkEscHandler, true); bulkEscHandler = null; }

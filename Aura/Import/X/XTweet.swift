@@ -15,6 +15,17 @@ struct XTweet: Decodable {
     var posterUrl: String?
     var quoted: XQuoted?
 
+    /// Optional client-supplied creation time (epoch ms). Bulk import sends a
+    /// descending stamp per tweet so the newest bookmark stays on top as the
+    /// stream fills in; click/forward omit it and the app stamps its own.
+    var createdAtMs: Double?
+
+    /// `createdAtMs` as a Date, when provided.
+    var createdAt: Date? {
+        guard let createdAtMs, createdAtMs > 0 else { return nil }
+        return Date(timeIntervalSince1970: createdAtMs / 1000)
+    }
+
     /// The canonical dedup key: a tweet's numeric status id (stable across
     /// handle renames and twitter.com↔x.com).
     var statusId: String? {

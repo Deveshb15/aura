@@ -764,7 +764,9 @@ extension DataStore {
             return XSaveOutcome(ok: true, duplicate: true)
         }
 
-        let item = XBookmarkMapper.makeItem(from: tweet, createdAt: nextXStamp())
+        // Bulk import supplies its own descending timestamp (newest on top);
+        // single saves (click/forward) stamp monotonically at import time.
+        let item = XBookmarkMapper.makeItem(from: tweet, createdAt: tweet.createdAt ?? nextXStamp())
         do {
             try await dbPool.write { db in try item.insert(db) }
         } catch {
