@@ -48,3 +48,20 @@ targets:
         product: SwiftSoup
       - package: Sparkle
         product: Sparkle
+      # Bundle the native-messaging host helper into Aura.app/Contents/MacOS
+      # (the standard, code-sign-safe location for a nested executable).
+      - target: aura-x-host
+        embed: true
+        link: false
+        copy:
+          destination: executables
+          codeSign: true
+  aura-x-host:
+    type: tool
+    platform: macOS
+    sources:
+      - path: XHost
+    settings:
+      base:
+        PRODUCT_NAME: aura-x-host
+        PRODUCT_BUNDLE_IDENTIFIER: app.captureaura.xhost

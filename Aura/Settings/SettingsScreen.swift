@@ -25,6 +25,7 @@ struct SettingsScreen: View {
     @State private var importError: String?
     @State private var showingExportHelp = false
     @State private var showingExportInfo = false
+    @State private var showingXHelp = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -192,6 +193,32 @@ struct SettingsScreen: View {
                     }
                     .buttonStyle(AuraSecondaryButtonStyle(compact: true))
                     .disabled(isImporting)
+                }
+                .padding(.vertical, 10)
+                rowDivider
+                HStack {
+                    VStack(alignment: .leading, spacing: 3) {
+                        rowLabel("X bookmarks")
+                        Button { showingXHelp.toggle() } label: {
+                            HStack(spacing: 3) {
+                                Text("How does this work?")
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 8, weight: .semibold))
+                            }
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(AuraTheme.textTertiary)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showingXHelp, arrowEdge: .bottom) {
+                            xHelpPopover
+                        }
+                    }
+                    Spacer()
+                    Button(action: startXBookmarkImport) {
+                        Text("Import my bookmarks…")
+                    }
+                    .buttonStyle(AuraSecondaryButtonStyle(compact: true))
                 }
                 .padding(.vertical, 10)
                 rowDivider
@@ -399,6 +426,58 @@ struct SettingsScreen: View {
         .padding(18)
         .frame(width: 320, alignment: .leading)
         .background(AuraTheme.background)
+    }
+
+    /// How the X bookmark sync works + how to set up the companion extension.
+    private var xHelpPopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Sync your X bookmarks")
+                .font(AuraFont.serif(16, .medium))
+                .foregroundStyle(AuraTheme.textPrimary)
+
+            VStack(alignment: .leading, spacing: 9) {
+                xStep("1", "Install the Aura browser extension once",
+                      "In Chrome, Brave, Edge or Arc: open the Extensions page, turn on Developer mode, then “Load unpacked” and choose the extension folder inside Aura.")
+                xStep("2", "Bookmark on X like normal",
+                      "While you’re on x.com, anything you bookmark is saved to Aura automatically — author, text and image included. Keep Aura running.")
+                xStep("3", "Bring in your history",
+                      "“Import my bookmarks” opens your X bookmarks and pulls in up to 400 existing ones as it scrolls.")
+            }
+
+            Text("Aura only reads your bookmarks page’s own data while you’re on X — no passwords, no background access, nothing leaves your Mac.")
+                .font(.system(size: 11))
+                .foregroundStyle(AuraTheme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .frame(width: 340, alignment: .leading)
+        .background(AuraTheme.background)
+    }
+
+    private func xStep(_ number: String, _ title: String, _ detail: String) -> some View {
+        HStack(alignment: .top, spacing: 9) {
+            Text(number)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(AuraTheme.textSecondary)
+                .frame(width: 16, height: 16)
+                .background(Circle().fill(AuraTheme.hairline))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(AuraTheme.textPrimary)
+                Text(detail)
+                    .font(.system(size: 12))
+                    .foregroundStyle(AuraTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// Opens the user's X bookmarks with the import trigger so the extension's
+    /// watcher starts a one-time, capped harvest (auto-scroll → up to 400).
+    private func startXBookmarkImport() {
+        guard let url = URL(string: "https://x.com/i/bookmarks?aura_import=1") else { return }
+        NSWorkspace.shared.open(url)
     }
 
     /// Picks a bookmarks HTML file, imports it off the main actor, then reports a
