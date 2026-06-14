@@ -6,12 +6,15 @@ import SwiftUI
 /// and the context menu has the full set.
 struct CardView: View {
     let item: Item
+    /// The masonry column width, threaded down to size the in-place text editor.
+    var columnWidth: CGFloat = 0
     @Environment(DataStore.self) private var store
-    @Environment(InAppComposeLauncher.self) private var composeLauncher
     @State private var hovering = false
     @State private var copied = false
 
     private let radius: CGFloat = 18
+    /// Horizontal padding inside a text card (`TextCardView` pads 20 each side).
+    private let textPadding: CGFloat = 20
 
     var body: some View {
         VStack(spacing: 0) {
@@ -23,28 +26,27 @@ struct CardView: View {
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(AuraTheme.hairline))
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(alignment: .topTrailing) { actionBar }
-            .shadow(color: .black.opacity(hovering ? 0.35 : 0.18), radius: hovering ? 14 : 6, y: 4)
+            .shadow(color: AuraTheme.shadow.opacity(hovering ? 1 : 0.5), radius: hovering ? 14 : 6, y: 4)
             .scaleEffect(hovering ? 1.012 : 1)
             .animation(.easeOut(duration: 0.16), value: hovering)
             .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .dragOut(item: item, assetURL: store.assetURL(for: item))
             .onHover { hovering = $0 }
-            .onTapGesture { store.primaryAction(item) }
+            // Text cards edit in place — the click must reach the editor, so we
+            // don't attach a primary-action tap (or drag-out) for them.
+            .primaryTap(for: item) { store.primaryAction(item) }
             .contextMenu {
                 if item.canOpen {
                     Button("Open", systemImage: "arrow.up.forward.app") { store.open(item) }
                 }
                 Button("Copy", systemImage: "doc.on.doc") { store.copyToClipboard(item) }
-                if item.itemType == .text {
-                    Button("Edit", systemImage: "pencil") { composeLauncher.presentEdit?(item) }
-                }
                 if item.itemType == .file || item.itemType == .image {
                     Button("Reveal in Finder", systemImage: "folder") { store.revealInFinder(item) }
                 }
                 Divider()
                 Button("Delete", systemImage: "trash", role: .destructive) { delete() }
             }
-            .help(item.canOpen ? openHelp : "Click to copy")
+            .help(helpText)
     }
 
     private func delete() {
@@ -62,11 +64,6 @@ struct CardView: View {
                         copied = false
                     }
                 }
-                if item.itemType == .text {
-                    CardActionButton(systemName: "pencil", help: "Edit") {
-                        composeLauncher.presentEdit?(item)
-                    }
-                }
                 if item.canOpen {
                     CardActionButton(systemName: "arrow.up.forward.app", help: openHelp) {
                         store.open(item)
@@ -77,6 +74,12 @@ struct CardView: View {
             .padding(8)
             .transition(.opacity)
         }
+    }
+
+    /// Text cards edit in place on click; everything else opens or copies.
+    private var helpText: String {
+        if item.itemType == .text { return "Click to edit" }
+        return item.canOpen ? openHelp : "Click to copy"
     }
 
     private var openHelp: String {
@@ -99,14 +102,17 @@ struct CardView: View {
         case .file: FileCardView(item: item)
         case .text: TextCardView(item: item,
                                  heroURL: store.fileURL(forRelativePath: item.ogImagePath),
-                                 faviconURL: store.fileURL(forRelativePath: item.faviconPath))
+                                 faviconURL: store.fileURL(forRelativePath: item.faviconPath),
+                                 contentWidth: columnWidth - textPadding * 2)
         }
     }
 }
 
 private extension View {
     /// Makes a card draggable OUT of the vault: images/files drag as a file URL
-    /// (drop into Finder or another app), links as a URL, text/colors as text.
+    /// (drop into Finder or another app), links as a URL, colors as text. Text
+    /// cards are intentionally excluded — they edit in place, so a click-drag
+    /// must select text rather than start a drag.
     @ViewBuilder
     func dragOut(item: Item, assetURL: URL?) -> some View {
         switch item.itemType {
@@ -114,8 +120,21 @@ private extension View {
             if let assetURL { self.draggable(assetURL) } else { self }
         case .url:
             if let url = URL(string: item.textContent ?? "") { self.draggable(url) } else { self }
-        case .text, .color:
+        case .color:
             self.draggable(item.textContent ?? "")
+        case .text:
+            self
+        }
+    }
+
+    /// Attaches a primary-click action for every type except text. Text cards
+    /// omit it so clicks fall through to the in-place editor.
+    @ViewBuilder
+    func primaryTap(for item: Item, _ action: @escaping () -> Void) -> some View {
+        if item.itemType == .text {
+            self
+        } else {
+            self.onTapGesture(perform: action)
         }
     }
 }

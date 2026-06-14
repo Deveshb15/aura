@@ -1,23 +1,114 @@
 import SwiftUI
 
+/// A text note card. The note body is edited in place: clicking puts the caret
+/// where you clicked, and the card commits on blur. A brand-new note (a
+/// "draft", tracked on `InAppComposeLauncher`) saves on non-empty blur and is
+/// discarded when left empty; an existing note updates, or is deleted when
+/// emptied. "Link + note" cards keep their preview, which still opens the URL.
 struct TextCardView: View {
     let item: Item
     var heroURL: URL? = nil
     var faviconURL: URL? = nil
+    /// Width available to the editor (column width minus the card's padding).
+    var contentWidth: CGFloat = 0
+
+    @Environment(DataStore.self) private var store
+    @Environment(InAppComposeLauncher.self) private var composeLauncher
+
+    @State private var draftText = ""
+    @State private var originalText = ""
+    @State private var isEditing = false
+    @State private var sessionIsDraft = false
+    @State private var autoFocus = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(item.textContent ?? "")
-                .font(.system(size: 15))
-                .foregroundStyle(AuraTheme.textPrimary)
-                .lineSpacing(2)
-                .lineLimit(14)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            ZStack(alignment: .topLeading) {
+                if draftText.isEmpty {
+                    Text("Write a note…")
+                        .font(.system(size: 15))
+                        .foregroundStyle(AuraTheme.textTertiary)
+                        .allowsHitTesting(false)
+                }
+                InlineNoteEditor(
+                    text: $draftText,
+                    width: max(0, contentWidth),
+                    autoFocus: autoFocus,
+                    onFocusChange: handleFocusChange,
+                    onEscape: handleEscape
+                )
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             if let link = item.linkURL {
                 LinkEmbedView(item: item, url: link, heroURL: heroURL, faviconURL: faviconURL)
+                    .contentShape(Rectangle())
+                    .onTapGesture { store.open(item) }
             }
         }
         .padding(20)
+        .onAppear { initialSync() }
+        .onChange(of: item.textContent ?? "") { _, newValue in
+            // Mirror external changes only while not editing, so live enrichment
+            // re-publishes don't fight the user's caret.
+            if !isEditing {
+                draftText = newValue
+                originalText = newValue
+            }
+        }
+    }
+
+    // MARK: - Editing lifecycle
+
+    private func initialSync() {
+        let text = item.textContent ?? ""
+        draftText = text
+        originalText = text
+        if composeLauncher.autofocusItemID == item.id {
+            autoFocus = true
+            composeLauncher.autofocusItemID = nil
+        }
+    }
+
+    private func handleFocusChange(_ focused: Bool) {
+        if focused {
+            isEditing = true
+            sessionIsDraft = (composeLauncher.draft?.id == item.id)
+            originalText = item.textContent ?? ""
+        } else {
+            // Guards against a second resign during view teardown.
+            guard isEditing else { return }
+            isEditing = false
+            commit()
+        }
+    }
+
+    private func handleEscape() {
+        isEditing = false
+        if sessionIsDraft || composeLauncher.draft?.id == item.id {
+            composeLauncher.draft = nil          // discard the draft
+        } else {
+            draftText = originalText              // revert the edit
+        }
+    }
+
+    private func commit() {
+        let new = draftText.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if sessionIsDraft {
+            composeLauncher.draft = nil
+            guard !new.isEmpty else { return }   // wrote nothing → vanish
+            Task { await store.saveNote(text: new, sourceApp: "Carpet") }
+            return
+        }
+
+        let old = originalText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard new != old else { return }         // untouched
+        if new.isEmpty {
+            store.delete(item)                   // cleared an existing note → delete
+        } else {
+            Task { await store.updateNote(item, text: new) }
+        }
     }
 }
 

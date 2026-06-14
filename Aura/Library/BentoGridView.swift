@@ -21,7 +21,7 @@ struct BentoGridView: View {
                     ForEach(Array(buckets.enumerated()), id: \.offset) { _, bucket in
                         LazyVStack(spacing: gap) {
                             ForEach(bucket) { item in
-                                CardView(item: item)
+                                CardView(item: item, columnWidth: columnWidth)
                                     .frame(width: columnWidth)
                             }
                         }

@@ -7,11 +7,11 @@ struct LibraryWindowView: View {
     @Environment(DataStore.self) private var store
     @Environment(InAppComposeLauncher.self) private var composeLauncher
     @Environment(SettingsPresenter.self) private var settings
+    @Environment(ThemeManager.self) private var theme
     @Environment(ToastCenter.self) private var toasts
     @State private var query = ""
     @State private var selectedTab: ContentTab = .all
     @State private var searchResults: [Item] = []
-    @State private var composerSheet: ComposerSheet?
     @FocusState private var searchFocused: Bool
 
     // On-device AI answer (macOS 26+ / Apple Silicon). Streamed on Return.
@@ -45,7 +45,13 @@ struct LibraryWindowView: View {
         // are in-window because the app is an LSUIElement agent (no app menu).
         // Hidden while Settings is up (it has its own Back control).
         .overlay(alignment: .topLeading) { if !settings.isPresented { newNoteButton } }
-        .overlay(alignment: .topTrailing) { if !settings.isPresented { settingsGear } }
+        .overlay(alignment: .topTrailing) {
+            if !settings.isPresented {
+                HStack(spacing: 2) { themeToggle; settingsGear }
+                    .padding(.top, 18)
+                    .padding(.trailing, 20)
+            }
+        }
         // Transient confirmation banner (e.g. after a bookmark import), floated
         // above whatever surface is showing — library or the Settings overlay.
         .overlay(alignment: .bottom) {
@@ -56,40 +62,25 @@ struct LibraryWindowView: View {
             }
         }
         .animation(.spring(response: 0.42, dampingFraction: 0.82), value: toasts.current)
-        .preferredColorScheme(.dark)
+        .preferredColorScheme(theme.colorScheme)
         .background(WindowFullScreenEnabler(launcher: composeLauncher))
-        // ⌘N opens the in-app composer while this window is key (distinct from
+        // ⌘N starts an inline note draft while this window is key (distinct from
         // the global ⌃⌘N, which the notch handles when the Library isn't focused).
         .background {
-            Button("") { composerSheet = ComposerSheet(mode: .create) }
+            Button("") { startDraft() }
                 .keyboardShortcut("n", modifiers: .command)
                 .opacity(0)
                 .accessibilityHidden(true)
         }
-        .sheet(item: $composerSheet) { sheet in
-            NoteComposerView(
-                mode: sheet.mode,
-                onSave: { result in
-                    switch sheet.mode {
-                    case .create:
-                        Task { await store.saveNote(text: result.text, sourceApp: "Carpet") }
-                    case .edit(let item):
-                        Task { await store.updateNote(item, text: result.text) }
-                    }
-                    composerSheet = nil
-                },
-                onCancel: { composerSheet = nil }
-            )
-        }
-        // Register the in-app composer entry points so the global New Note hotkey
-        // and card "Edit" can drive this window's sheet.
+        // Register the in-app composer entry point so the global New Note hotkey
+        // drives an inline draft in this window.
         .onAppear {
-            composeLauncher.present = { composerSheet = ComposerSheet(mode: .create) }
-            composeLauncher.presentEdit = { item in composerSheet = ComposerSheet(mode: .edit(item)) }
+            composeLauncher.present = { startDraft() }
         }
         .onDisappear {
             composeLauncher.present = nil
-            composeLauncher.presentEdit = nil
+            composeLauncher.draft = nil
+            composeLauncher.autofocusItemID = nil
             composeLauncher.isLibraryKey = false
         }
         .task(id: query) {
@@ -143,7 +134,7 @@ struct LibraryWindowView: View {
 
     /// Header affordance to compose a note in-app (also bound to ⌘N).
     private var newNoteButton: some View {
-        Button { composerSheet = ComposerSheet(mode: .create) } label: {
+        Button { startDraft() } label: {
             HStack(spacing: 5) {
                 Image(systemName: "square.and.pencil")
                     .font(.system(size: 13, weight: .medium))
@@ -163,6 +154,24 @@ struct LibraryWindowView: View {
         .help("New note (⌘N)")
     }
 
+    /// Light/dark theme toggle — a single sun/moon that morphs between states.
+    /// Sits just left of the gear; one tap flips the whole app's theme.
+    private var themeToggle: some View {
+        Button {
+            withAnimation(.smooth(duration: 0.35)) { theme.toggle() }
+        } label: {
+            Image(systemName: theme.mode == .dark ? "moon.fill" : "sun.max.fill")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(AuraTheme.textSecondary)
+                .contentTransition(.symbolEffect(.replace))
+                .frame(width: 19, height: 19)
+                .padding(8)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(theme.mode == .dark ? "Switch to light theme" : "Switch to dark theme")
+    }
+
     /// Opens the in-app, full-page Settings screen (no native Settings window).
     private var settingsGear: some View {
         Button {
@@ -175,8 +184,6 @@ struct LibraryWindowView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(.top, 18)
-        .padding(.trailing, 20)
         .help("Settings")
     }
 
@@ -235,7 +242,7 @@ struct LibraryWindowView: View {
             .padding(16)
             .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AuraTheme.surface))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.06)))
+                .strokeBorder(AuraTheme.hairline))
             .padding(.horizontal, 40)
             .padding(.bottom, 18)
             .transition(.opacity)
@@ -274,11 +281,34 @@ struct LibraryWindowView: View {
     // MARK: - Content
 
     @ViewBuilder private var content: some View {
-        if filteredItems.isEmpty {
+        if gridItems.isEmpty {
             emptyState
         } else {
-            BentoGridView(items: filteredItems)
+            BentoGridView(items: gridItems)
         }
+    }
+
+    /// The grid's items, with any in-progress note draft pinned to the front so
+    /// it renders as the first (top-left) card.
+    private var gridItems: [Item] {
+        guard let draft = composeLauncher.draft else { return filteredItems }
+        return [draft] + filteredItems.filter { $0.id != draft.id }
+    }
+
+    /// Starts an inline note draft: a transient, unsaved `.text` item shown as a
+    /// focused card at the top of the grid. Saved on non-empty blur, discarded
+    /// when left empty. If a draft is already open, just re-focus it.
+    private func startDraft() {
+        if let existing = composeLauncher.draft {
+            composeLauncher.autofocusItemID = existing.id
+            return
+        }
+        var draft = Item(type: .text)
+        draft.sourceApp = "Carpet"
+        draft.textContent = ""
+        query = ""                                   // leave any search so the draft shows
+        composeLauncher.draft = draft
+        composeLauncher.autofocusItemID = draft.id
     }
 
     private var emptyState: some View {
@@ -303,23 +333,21 @@ struct LibraryWindowView: View {
     }
 
     private var filteredItems: [Item] {
-        // While searching, show all matches across types; otherwise filter by tab.
-        if isSearching { return searchResults }
+        // Search and the category tab compose: matches, then narrowed to the tab.
+        if isSearching {
+            if selectedTab == .all { return searchResults }
+            return searchResults.filter { ContentTab.tabs(for: $0).contains(selectedTab) }
+        }
         if selectedTab == .all { return store.libraryItems }
         return store.libraryItems.filter { ContentTab.tabs(for: $0).contains(selectedTab) }
     }
 
     private var emptyTitle: String {
-        if isSearching { return "No matches" }
+        if isSearching {
+            return selectedTab == .all ? "No matches" : "No matches in \(selectedTab.label)"
+        }
         return store.libraryItems.isEmpty ? "Nothing saved yet" : "Nothing in \(selectedTab.label)"
     }
-}
-
-/// Identifiable wrapper so the composer sheet can carry its create/edit mode
-/// (the mode itself isn't `Identifiable` — the embedded `Item` isn't its identity).
-private struct ComposerSheet: Identifiable {
-    let id = UUID()
-    let mode: NoteComposerView.Mode
 }
 
 /// Configures the Library window's chrome directly on the `NSWindow`: a
