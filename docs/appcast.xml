@@ -3,6 +3,23 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>2.1.0</title>
+            <pubDate>Sun, 14 Jun 2026 20:41:28 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>16</sparkle:version>
+            <sparkle:shortVersionString>2.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Notes, and a fresh welcome</h2>
+<ul>
+  <li><b>New Notes category.</b> Quick notes you write in Carpet — from the notch (⌃⌘N) or the library — now have their own tab, separate from clipboard captures.</li>
+  <li><b>Redesigned onboarding.</b> The welcome and how-to screens now wear Carpet's blue-sky look, with all-new notch illustrations for copy, library, quick notes, and drag-to-save.</li>
+  <li><b>Reminders removed.</b> The "remind me…" feature is gone — Carpet stays focused on capturing and finding your stuff.</li>
+  <li><b>Settings tidy-up.</b> X bookmark sync is marked "Coming soon" until the browser extension ships, and there's a quick way to reach out for help.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.1.0/Carpet-2.1.0.dmg" length="16552946" type="application/octet-stream" sparkle:edSignature="P3qjFI3+CDILtFx5SbRxQ8EHweQCwimGabMjNKLgzWEBwaHLA1xlTq3k1ps8bBtqPfk/Pa1/YvIVuOPX6VMXCQ=="/>
+        </item>
+        <item>
             <title>2.0.1</title>
             <pubDate>Sat, 13 Jun 2026 19:58:47 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -62,27 +79,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.6.0/Aura-1.6.0.dmg" length="11864621" type="application/octet-stream" sparkle:edSignature="5TCLLZNqzdgPDmAQxTJq3ayFu/yikUqFz+f2D1bfEfnDaA1IETdULUv+exsthhB071VByAxntOHO4TXDp/d8Cg=="/>
-        </item>
-        <item>
-            <title>1.5.0</title>
-            <pubDate>Fri, 12 Jun 2026 00:13:41 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>11</sparkle:version>
-            <sparkle:shortVersionString>1.5.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>Logos for every source</h2>
-<p>Saved items now show the real logo of wherever they came from — <strong>any app</strong>, not just a handful. Aura recognises the source (Slack, Postman, Wispr Flow, Notion…), finds its logo on the fly, and falls back to the app's own icon when needed. Every logo is cached, so it's instant after the first time.</p>
-<h2>Cleaner notch</h2>
-<ul>
-  <li>Recent tiles drop the corner type icon — just your content and a timestamp, with <strong>Copy / Open</strong> on hover.</li>
-  <li>The quick-note composer's back button and spacing got a polish.</li>
-</ul>
-<h2>Under the hood</h2>
-<ul>
-  <li>Aura now checks for updates twice a day, so new versions reach you sooner.</li>
-</ul>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.5.0/Aura-1.5.0.dmg" length="10932515" type="application/octet-stream" sparkle:edSignature="hdxwWfPPQD0XxWeugSTRzMTz2z2sMKUOMNBo+0pQo843KBkfk+QjZ32XUjB5ojlZAxnlJrNUCsycQ3blj4kwCg=="/>
         </item>
     </channel>
 </rss>
