@@ -20,9 +20,9 @@ struct ComposeView: View {
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(AuraTheme.textSecondary)
                     .frame(width: 22, height: 22)
-                    .background(.white.opacity(0.06), in: Circle())
+                    .background(AuraTheme.fill, in: Circle())
             }
             .buttonStyle(.plain)
             .help("Back")
@@ -33,15 +33,15 @@ struct ComposeView: View {
                 if text.isEmpty {
                     Text("Write a quick note…")
                         .font(.system(size: 14, weight: .regular))
-                        .foregroundStyle(.white.opacity(0.25))
+                        .foregroundStyle(AuraTheme.textTertiary)
                         .padding(.top, 2)
                         .padding(.leading, 5)
                         .allowsHitTesting(false)
                 }
                 TextEditor(text: $text)
                     .font(.system(size: 14, weight: .regular))
-                    .foregroundStyle(.white.opacity(0.88))
-                    .tint(.white.opacity(0.65))
+                    .foregroundStyle(AuraTheme.textPrimary)
+                    .tint(AuraTheme.accentDot)
                     .scrollContentBackground(.hidden)
                     .focused($isFocused)
             }
@@ -49,20 +49,20 @@ struct ComposeView: View {
 
             // ── Divider ───────────────────────────────────────────────────────
             Rectangle()
-                .fill(.white.opacity(0.07))
+                .fill(AuraTheme.hairline)
                 .frame(height: 0.5)
 
             // ── Action strip ──────────────────────────────────────────────────
             HStack(spacing: 0) {
                 Text("↩ save")
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.28))
+                    .foregroundStyle(AuraTheme.textTertiary)
                 Text("  ⇧↩ newline")
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.18))
+                    .foregroundStyle(AuraTheme.textTertiary)
                 Text("  esc dismiss")
                     .font(.system(size: 10.5, weight: .medium, design: .monospaced))
-                    .foregroundStyle(.white.opacity(0.18))
+                    .foregroundStyle(AuraTheme.textTertiary)
 
                 Spacer(minLength: 8)
 
@@ -73,13 +73,13 @@ struct ComposeView: View {
                         Text("Save")
                             .font(.system(size: 11.5, weight: .semibold))
                     }
-                    .foregroundStyle(isEmpty ? .white.opacity(0.28) : .black)
+                    .foregroundStyle(isEmpty ? AuraTheme.textTertiary : AuraTheme.activePillLabel)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 5)
                     .background(
                         isEmpty
-                            ? AnyShapeStyle(.white.opacity(0.07))
-                            : AnyShapeStyle(.white),
+                            ? AnyShapeStyle(AuraTheme.fill)
+                            : AnyShapeStyle(AuraTheme.activePill),
                         in: Capsule()
                     )
                 }

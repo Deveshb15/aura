@@ -1,26 +1,82 @@
 import SwiftUI
+import AppKit
 
-/// Centralized dark palette + Awesome Serif typography for the redesigned
-/// Library window. Colors are explicit (not system colors) so the window reads
-/// identically regardless of the system light/dark setting — the window forces
-/// `.preferredColorScheme(.dark)`, and these tokens match the Figma mockup.
+/// Centralized palette + Awesome Serif typography for the redesigned Library
+/// window. Tokens are **adaptive**: each resolves a dark or light value from the
+/// active appearance, so the whole UI flips when a host applies
+/// `.preferredColorScheme(...)` (driven by `ThemeManager`). Dark is the default;
+/// the dark values match the original Figma mockup. Because resolution happens at
+/// render time off the environment's color scheme, every `AuraTheme.*` call site
+/// adapts for free — no per-site edits.
 enum AuraTheme {
-    static let background   = Color(hex: "#0B0B0D")!
-    static let surface      = Color(hex: "#19191B")!
-    static let surfaceHover = Color(hex: "#202023")!
-    static let hairline     = Color.white.opacity(0.06)
-    static let textPrimary  = Color(hex: "#F2F2F3")!
-    static let textSecondary = Color(hex: "#8B8B8E")!
-    static let textTertiary = Color(hex: "#6A6A6E")!
-    static let accentDot    = Color(hex: "#FF5C8A")!
-    static let activePill   = Color.white
-    static let destructive  = Color(hex: "#FF6B6B")!
+    static let background      = hex(dark: "#0B0B0D", light: "#F6F6F8")
+    static let surface         = hex(dark: "#19191B", light: "#FFFFFF")
+    static let surfaceHover    = hex(dark: "#202023", light: "#F0F0F2")
+    static let hairline        = blend(dark: (.white, 0.06), light: (.black, 0.08))
+    static let textPrimary     = hex(dark: "#F2F2F3", light: "#1A1A1C")
+    static let textSecondary   = hex(dark: "#8B8B8E", light: "#6E6E73")
+    static let textTertiary    = hex(dark: "#6A6A6E", light: "#9A9A9E")
+    static let accentDot       = hex(dark: "#FF5C8A", light: "#FF5C8A") // pink reads on both
+    static let activePill      = hex(dark: "#FFFFFF", light: "#1A1A1C")
+    static let destructive     = hex(dark: "#FF6B6B", light: "#E5484D")
 
     /// Sky-blue brand accent — the flying-carpet "sky" that the app icon and DMG
     /// installer lead with. Used by the onboarding atmosphere + accents (kept out
     /// of the working surfaces, which stay on `accentDot`).
-    static let sky          = Color(hex: "#5C9CEC")!
-    static let skyDeep      = Color(hex: "#4C9ADC")!
+    static let sky             = hex(dark: "#5C9CEC", light: "#3B82E0")
+    static let skyDeep         = hex(dark: "#4C9ADC", light: "#2F6FC8")
+
+    // MARK: - Tokens for surfaces that were previously inline white/black opacity
+
+    /// Text/glyph color drawn ON the active tab pill (which inverts per theme).
+    static let activePillLabel = hex(dark: "#0B0B0D", light: "#FFFFFF")
+    /// A slightly stronger hairline for chips, action buttons, the notch border.
+    static let hairlineStrong  = blend(dark: (.white, 0.10), light: (.black, 0.12))
+    /// Faint fill for chips / mini-card tiles / off-state toggle tracks.
+    static let fill            = blend(dark: (.white, 0.08), light: (.black, 0.05))
+    /// Even fainter fill (e.g. inert "Coming soon" pill, inputs).
+    static let fillSubtle      = blend(dark: (.white, 0.05), light: (.black, 0.035))
+    /// Drop shadow under cards / toasts — much softer in light mode.
+    static let shadow          = blend(dark: (.black, 0.35), light: (.black, 0.12))
+    /// The notch panel: pure black in dark (blends with the hardware notch),
+    /// white in light. Kept distinct from `surface` so the dark notch stays #000.
+    static let notchPanel      = hex(dark: "#000000", light: "#FFFFFF")
+
+    // MARK: - Adaptive helpers
+
+    /// Wraps a light/dark provider in a dynamic `NSColor`; SwiftUI re-resolves it
+    /// against the environment's color scheme whenever a host's appearance flips.
+    private static func dynamic(_ provider: @escaping (Bool) -> NSColor) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            provider(appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua)
+        })
+    }
+
+    /// Adaptive solid color from two `#RRGGBB` hex strings.
+    private static func hex(dark: String, light: String) -> Color {
+        let d = nsColor(dark), l = nsColor(light)
+        return dynamic { $0 ? d : l }
+    }
+
+    /// Parses a `#RRGGBB` string into an sRGB `NSColor` (the palette is all
+    /// 6-digit opaque hex). Mirrors `Color(hex:)` but stays in NSColor space so
+    /// the dynamic provider returns a concrete, non-dynamic color.
+    private static func nsColor(_ hex: String) -> NSColor {
+        var s = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.hasPrefix("#") { s.removeFirst() }
+        let v = UInt64(s, radix: 16) ?? 0
+        return NSColor(srgbRed: CGFloat((v >> 16) & 0xFF) / 255,
+                       green: CGFloat((v >> 8) & 0xFF) / 255,
+                       blue: CGFloat(v & 0xFF) / 255,
+                       alpha: 1)
+    }
+
+    /// Adaptive translucent color: a base (white/black) at a per-theme opacity.
+    private static func blend(dark: (NSColor, CGFloat), light: (NSColor, CGFloat)) -> Color {
+        let d = dark.0.withAlphaComponent(dark.1)
+        let l = light.0.withAlphaComponent(light.1)
+        return dynamic { $0 ? d : l }
+    }
 }
 
 /// Awesome Serif, addressed by its exact PostScript name per weight × height.

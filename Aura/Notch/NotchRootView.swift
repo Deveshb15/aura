@@ -29,8 +29,8 @@ struct NotchRootView: View {
     private var styledPanel: some View {
         panel
             .frame(width: panelSize.width, height: panelSize.height)
-            .background(NotchShape().fill(Color.black))
-            .overlay(NotchShape().stroke(Color.white.opacity(0.08), lineWidth: 0.5))
+            .background(NotchShape().fill(AuraTheme.notchPanel))
+            .overlay(NotchShape().stroke(AuraTheme.hairlineStrong, lineWidth: 0.5))
             .clipShape(NotchShape())
             // Panel size springs between collapsed / nudge / expanded.
             // Critically damped on pending so the notch grows/shrinks cleanly —

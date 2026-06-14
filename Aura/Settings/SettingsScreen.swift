@@ -309,7 +309,7 @@ struct SettingsScreen: View {
             .foregroundStyle(AuraTheme.textSecondary)
             .padding(.horizontal, 11)
             .padding(.vertical, 6)
-            .background(Capsule().fill(Color.white.opacity(0.05)))
+            .background(Capsule().fill(AuraTheme.fillSubtle))
             .overlay(Capsule().strokeBorder(AuraTheme.hairline))
     }
 

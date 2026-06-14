@@ -17,11 +17,11 @@ struct NudgeCardView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)
                     .font(.system(size: 12.5, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(AuraTheme.textPrimary)
                     .lineLimit(1)
                 Text(subtitle)
                     .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.55))
+                    .foregroundStyle(AuraTheme.textSecondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
@@ -33,27 +33,27 @@ struct NudgeCardView: View {
                     Image(systemName: "tray.and.arrow.down.fill").font(.system(size: 11, weight: .semibold))
                     Text("Keep").font(.system(size: 12, weight: .semibold))
                 }
-                .foregroundStyle(.black)
+                .foregroundStyle(AuraTheme.activePillLabel)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 7)
-                .background(.white, in: Capsule())
+                .background(AuraTheme.activePill, in: Capsule())
             }
             .buttonStyle(.plain)
 
             Button(action: onDismiss) {
                 Image(systemName: "xmark")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(AuraTheme.textSecondary)
                     .frame(width: 24, height: 24)
-                    .background(.white.opacity(0.08), in: Circle())
+                    .background(AuraTheme.fill, in: Circle())
             }
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .frame(height: 64)
-        .background(.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(.white.opacity(0.08)))
+        .background(AuraTheme.fill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(AuraTheme.hairlineStrong))
         // The whole card is a keep target (the ✕ button dismisses first); this
         // also stops a card tap from falling through to "open library".
         .contentShape(Rectangle())
@@ -69,8 +69,8 @@ struct NudgeCardView: View {
             Color(hex: hex) ?? Color.gray
         default:
             ZStack {
-                Color.white.opacity(0.12)
-                Image(systemName: icon).font(.system(size: 15)).foregroundStyle(.white.opacity(0.85))
+                AuraTheme.fill
+                Image(systemName: icon).font(.system(size: 15)).foregroundStyle(AuraTheme.textSecondary)
             }
         }
     }

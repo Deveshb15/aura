@@ -102,7 +102,7 @@ struct ContentTypeTabBar: View {
                 Text(tab.label)
                     .font(.system(size: 14, weight: .medium))
             }
-            .foregroundStyle(isSelected ? Color.black : AuraTheme.textSecondary)
+            .foregroundStyle(isSelected ? AuraTheme.activePillLabel : AuraTheme.textSecondary)
             .padding(.horizontal, 14)
             .padding(.vertical, 8)
             .background {

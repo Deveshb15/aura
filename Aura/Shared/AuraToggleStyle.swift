@@ -10,13 +10,13 @@ struct AuraToggleStyle: ToggleStyle {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Capsule()
-                .fill(configuration.isOn ? AuraTheme.accentDot : Color.white.opacity(0.14))
+                .fill(configuration.isOn ? AuraTheme.accentDot : AuraTheme.fill)
                 .frame(width: 42, height: 25)
                 .overlay(
                     Circle()
                         .fill(Color.white)
                         .frame(width: 21, height: 21)
-                        .shadow(color: .black.opacity(0.22), radius: 1.5, y: 1)
+                        .shadow(color: AuraTheme.shadow, radius: 1.5, y: 1)
                         .offset(x: configuration.isOn ? 8.5 : -8.5)
                 )
                 .animation(.easeOut(duration: 0.16), value: configuration.isOn)

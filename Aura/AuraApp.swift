@@ -19,6 +19,7 @@ struct AuraApp: App {
                 .environment(appDelegate.env.dataStore)
                 .environment(appDelegate.env.inAppComposeLauncher)
                 .environment(appDelegate.env.settingsPresenter)
+                .environment(appDelegate.env.themeManager)
                 .environment(appDelegate.env.toastCenter)
                 .frame(minWidth: 820, minHeight: 560)
         }

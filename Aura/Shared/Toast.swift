@@ -63,7 +63,7 @@ struct ToastView: View {
         .padding(.vertical, 12)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(AuraTheme.surface))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(AuraTheme.hairline))
-        .shadow(color: .black.opacity(0.35), radius: 18, y: 8)
+        .shadow(color: AuraTheme.shadow, radius: 18, y: 8)
         .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .onTapGesture { onTap() }
     }

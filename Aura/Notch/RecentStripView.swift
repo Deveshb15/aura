@@ -12,11 +12,11 @@ struct NotchExpandedView: View {
             HStack(spacing: 8) {
                 Label("Carpet", systemImage: "tray.full.fill")
                     .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(AuraTheme.textPrimary)
                 Spacer()
                 Text(isDropTargeted ? "Drop to save" : "\(dataStore.recentItems.count) saved")
                     .font(.system(size: 10))
-                    .foregroundStyle(isDropTargeted ? Color.green : Color.white.opacity(0.5))
+                    .foregroundStyle(isDropTargeted ? Color.green : AuraTheme.textSecondary)
                 addNoteButton
             }
 
@@ -42,11 +42,11 @@ struct NotchExpandedView: View {
                 Image(systemName: "square.and.pencil").font(.system(size: 10, weight: .semibold))
                 Text("Note").font(.system(size: 10.5, weight: .semibold))
             }
-            .foregroundStyle(.white.opacity(0.9))
+            .foregroundStyle(AuraTheme.textPrimary)
             .padding(.horizontal, 9)
             .padding(.vertical, 4)
-            .background(.white.opacity(0.10), in: Capsule())
-            .overlay(Capsule().strokeBorder(.white.opacity(0.08)))
+            .background(AuraTheme.fill, in: Capsule())
+            .overlay(Capsule().strokeBorder(AuraTheme.hairlineStrong))
         }
         .buttonStyle(.plain)
         .help("New note")
@@ -55,13 +55,13 @@ struct NotchExpandedView: View {
     private var dropHint: some View {
         RoundedRectangle(cornerRadius: 12, style: .continuous)
             .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
-            .foregroundStyle(.white.opacity(isDropTargeted ? 0.7 : 0.25))
+            .foregroundStyle(isDropTargeted ? AuraTheme.textSecondary : AuraTheme.textTertiary)
             .overlay(
                 VStack(spacing: 4) {
                     Image(systemName: "arrow.down.to.line").font(.system(size: 16))
                     Text("Drop files, links, or images").font(.system(size: 11))
                 }
-                .foregroundStyle(.white.opacity(0.5))
+                .foregroundStyle(AuraTheme.textSecondary)
             )
             .frame(maxWidth: .infinity)
             .frame(height: 118)
@@ -101,8 +101,8 @@ struct NotchMiniCard: View {
         }
         .frame(width: 96, height: 110)
         .overlay(alignment: .bottomTrailing) { if !hovering { timestampBadge } }
-        .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.07)))
+        .background(AuraTheme.fill, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(AuraTheme.hairline))
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         .contentShape(Rectangle())
         .onTapGesture { dataStore.primaryAction(item) }
@@ -146,7 +146,7 @@ struct NotchMiniCard: View {
         case .text:
             Text(item.textContent ?? "")
                 .font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(AuraTheme.textPrimary)
                 .lineLimit(6)
                 .padding(8)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -157,11 +157,11 @@ struct NotchMiniCard: View {
         VStack(spacing: 6) {
             Image(systemName: name)
                 .font(.system(size: 18))
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(AuraTheme.textSecondary)
             if let caption {
                 Text(caption)
                     .font(.system(size: 9))
-                    .foregroundStyle(.white.opacity(0.6))
+                    .foregroundStyle(AuraTheme.textTertiary)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 4)

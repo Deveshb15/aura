@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import GRDB
+import SwiftUI
 
 /// Bridges "open the library window" from AppKit (the notch) to SwiftUI's
 /// scene-based `openWindow`. A scene view (the menu-bar label) fills in `open`
@@ -27,6 +28,29 @@ final class ComposeLauncher {
     var compose: (() -> Void)?
 }
 
+enum AuraThemeMode { case dark, light }
+
+/// The selected app theme. Dark is the default. SwiftUI surfaces read
+/// `colorScheme` and apply `.preferredColorScheme(...)`; the AppKit-hosted notch
+/// subscribes to `onChange` to flip its window appearance. Persists to
+/// UserDefaults under `isDarkTheme`.
+@MainActor
+@Observable
+final class ThemeManager {
+    var mode: AuraThemeMode {
+        didSet { UserDefaults.standard.set(mode == .dark, forKey: "isDarkTheme") }
+    }
+
+    init() {
+        let isDark = UserDefaults.standard.object(forKey: "isDarkTheme") as? Bool ?? true
+        mode = isDark ? .dark : .light
+    }
+
+    var colorScheme: ColorScheme { mode == .dark ? .dark : .light }
+
+    func toggle() { mode = (mode == .dark) ? .light : .dark }
+}
+
 /// Dependency-injection root: builds the database, store, and services once and
 /// shares the single `DataStore` instance across both surfaces.
 @MainActor
@@ -39,6 +63,7 @@ final class AppEnvironment {
     let composeLauncher = ComposeLauncher()
     let inAppComposeLauncher = InAppComposeLauncher()
     let settingsPresenter = SettingsPresenter()
+    let themeManager = ThemeManager()
     let toastCenter = ToastCenter()
     let updater = SparkleUpdater()
     let xBridge: XBookmarkBridge

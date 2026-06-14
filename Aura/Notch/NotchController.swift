@@ -42,6 +42,17 @@ final class NotchController {
         self.geometry = NotchGeometry.current()
     }
 
+    /// The notch hugs the physical (black) hardware notch, so it stays dark in
+    /// BOTH app themes. Pin its AppKit hosting to `.darkAqua` so the adaptive
+    /// `AuraTheme` tokens used inside it always resolve to their dark values,
+    /// regardless of the selected theme or the system appearance.
+    private func forceDarkAppearance() {
+        let dark = NSAppearance(named: .darkAqua)
+        panel?.appearance = dark
+        hostingView?.appearance = dark
+        container?.appearance = dark
+    }
+
     deinit {
         if let globalMonitor { NSEvent.removeMonitor(globalMonitor) }
         if let localMonitor { NSEvent.removeMonitor(localMonitor) }
@@ -84,6 +95,9 @@ final class NotchController {
         self.panel = panel
         self.container = container
         self.hostingView = hosting
+
+        // Keep the notch dark in every theme (it sits on the black hardware notch).
+        forceDarkAppearance()
 
         installMouseMonitors()
 
