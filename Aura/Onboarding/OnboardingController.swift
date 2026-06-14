@@ -13,9 +13,9 @@ final class OnboardingWindow: NSWindow {
 /// AppKit-owns-the-window / SwiftUI-hosted-inside idiom used by `NotchController`.
 ///
 /// While onboarding is open the app is temporarily promoted to `.regular` (so it
-/// foregrounds with a real key window and the system notification prompt attaches
-/// correctly); on finish it reverts to `.accessory`. The completion closure is
-/// what wires the app "live" — it reveals the notch and starts clipboard capture.
+/// foregrounds with a real key window for the name field); on finish it reverts
+/// to `.accessory`. The completion closure is what wires the app "live" — it
+/// reveals the notch and starts clipboard capture.
 @MainActor
 final class OnboardingController {
     private var window: OnboardingWindow?

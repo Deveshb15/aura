@@ -2,15 +2,16 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Content-type filter for the library, matching the redesigned tab bar
-/// (Writing / Images / Links / Music / Videos).
+/// (Notes / Text / Images / Links / Music / Videos).
 enum ContentTab: String, CaseIterable, Identifiable {
-    case all, writing, images, links, music, videos
+    case all, notes, writing, images, links, music, videos
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
         case .all:     return "All"
+        case .notes:   return "Notes"
         case .writing: return "Text"
         case .images:  return "Images"
         case .links:   return "Links"
@@ -23,6 +24,7 @@ enum ContentTab: String, CaseIterable, Identifiable {
     var symbol: String {
         switch self {
         case .all:     return "square.grid.2x2.fill"
+        case .notes:   return "note.text"
         case .writing: return "text.alignleft"
         case .images:  return "photo.fill"
         case .links:   return "link"
@@ -32,13 +34,15 @@ enum ContentTab: String, CaseIterable, Identifiable {
     }
 
     /// Every tab an item belongs to, derived at display time from `itemType` +
-    /// `host`, so it works for existing rows without a DB migration. A text
-    /// capture with an embedded link counts as BOTH writing and its link tab.
-    /// Never contains `.all` (that tab is a catch-all handled by the caller).
+    /// `host` (and, for notes, the source app), so it works for existing rows
+    /// without a DB migration. A note written in Carpet lands in `.notes`;
+    /// other text captures land in `.writing` — and either, if it embeds a link,
+    /// also counts toward its link tab. Never contains `.all` (that tab is a
+    /// catch-all handled by the caller).
     static func tabs(for item: Item) -> Set<ContentTab> {
         switch item.itemType {
         case .text:
-            var tabs: Set<ContentTab> = [.writing]
+            var tabs: Set<ContentTab> = [item.isCarpetNote ? .notes : .writing]
             if let host = (item.host ?? item.linkURL?.host)?.lowercased() {
                 tabs.insert(linkTab(forHost: host))
             }

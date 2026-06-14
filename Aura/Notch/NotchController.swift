@@ -366,22 +366,14 @@ final class NotchController {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.26, execute: work)
     }
 
-    /// Saves the composed text (if non-empty) then exits compose mode. A note
-    /// that reads like a reminder is detected on save (on-device AI, heuristic
-    /// fallback); since the notch has no date picker, it auto-schedules only
-    /// when a concrete future time is parsed — otherwise it's a plain note the
-    /// user can turn into a reminder later from the Library card's bell chip.
+    /// Saves the composed text (if non-empty) as a quick note, then exits
+    /// compose mode. The "Carpet Quick Note" source marker routes it to the
+    /// Notes category in the Library.
     func saveCompose(text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty {
             let store = dataStore
-            Task {
-                let parse = await ReminderDetector.detect(trimmed)
-                let reminderDate = parse.isReminder ? parse.date : nil
-                await store.saveNote(text: trimmed,
-                                     reminderDate: reminderDate,
-                                     sourceApp: "Carpet Quick Note")
-            }
+            Task { await store.saveNote(text: trimmed, sourceApp: "Carpet Quick Note") }
             NSHapticFeedbackManager.defaultPerformer.perform(.levelChange, performanceTime: .now)
         }
         exitCompose()

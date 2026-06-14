@@ -38,11 +38,6 @@ struct CardView: View {
                 if item.itemType == .text {
                     Button("Edit", systemImage: "pencil") { composeLauncher.presentEdit?(item) }
                 }
-                if item.hasReminder {
-                    Button("Remove reminder", systemImage: "bell.slash") {
-                        Task { await store.setReminder(item, at: nil) }
-                    }
-                }
                 if item.itemType == .file || item.itemType == .image {
                     Button("Reveal in Finder", systemImage: "folder") { store.revealInFinder(item) }
                 }

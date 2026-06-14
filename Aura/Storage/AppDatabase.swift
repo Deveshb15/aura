@@ -163,14 +163,15 @@ enum AppDatabase {
             }
         }
 
-        // Reminders: a note whose text says "remind me …" can carry a fire time
-        // and a delivered flag, so we can schedule a local notification and
-        // reconcile pending ones at launch. Both columns are scheduling
-        // metadata — kept OUT of item_fts and Item.searchText, so this is a
-        // pure additive ALTER with no FTS rebuild.
+        // LEGACY (reminders feature, since removed): this migration once backed
+        // a "remind me …" notification feature. The feature is gone, but the
+        // migration stays registered — it already ran in shipped releases, so
+        // dropping it would break migration history on existing installs. The
+        // `reminderAt` / `reminderDelivered` columns are now unused dead weight
+        // (the `Item` struct no longer maps them); they're harmless to leave.
         migrator.registerMigration("v4-reminders") { db in
             try db.alter(table: "item") { t in
-                t.add(column: "reminderAt", .datetime)                 // nil = not a reminder
+                t.add(column: "reminderAt", .datetime)
                 t.add(column: "reminderDelivered", .boolean).defaults(to: false)
             }
             try db.create(index: "item_on_reminderAt", on: "item", columns: ["reminderAt"])

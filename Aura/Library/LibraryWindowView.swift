@@ -11,7 +11,6 @@ struct LibraryWindowView: View {
     @State private var query = ""
     @State private var selectedTab: ContentTab = .all
     @State private var searchResults: [Item] = []
-    @State private var showRemindersOnly = false
     @State private var composerSheet: ComposerSheet?
     @FocusState private var searchFocused: Bool
 
@@ -73,12 +72,9 @@ struct LibraryWindowView: View {
                 onSave: { result in
                     switch sheet.mode {
                     case .create:
-                        Task { await store.saveNote(text: result.text,
-                                                    reminderDate: result.reminderAt,
-                                                    sourceApp: "Carpet") }
+                        Task { await store.saveNote(text: result.text, sourceApp: "Carpet") }
                     case .edit(let item):
-                        Task { await store.updateNote(item, text: result.text,
-                                                      reminderDate: result.reminderAt) }
+                        Task { await store.updateNote(item, text: result.text) }
                     }
                     composerSheet = nil
                 },
@@ -110,10 +106,8 @@ struct LibraryWindowView: View {
             }
         }
         // Switching tabs (or any stray focus change) shouldn't strand the caret.
-        // Picking a content tab also exits the reminders-only filter.
         .onChange(of: selectedTab) { _, _ in
             searchFocused = true
-            showRemindersOnly = false
         }
     }
 
@@ -129,12 +123,9 @@ struct LibraryWindowView: View {
                 .padding(.horizontal, 40)
                 .padding(.bottom, showAnswer ? 16 : 26)
             answerBanner
-            HStack(spacing: 8) {
-                ContentTypeTabBar(selection: $selectedTab)
-                remindersToggle
-            }
-            .padding(.horizontal, 40)
-            .padding(.bottom, 18)
+            ContentTypeTabBar(selection: $selectedTab)
+                .padding(.horizontal, 40)
+                .padding(.bottom, 18)
             content
         }
     }
@@ -170,23 +161,6 @@ struct LibraryWindowView: View {
         .padding(.top, 16)
         .padding(.leading, 20)
         .help("New note (⌘N)")
-    }
-
-    /// Bell toggle beside the content tabs: filters to reminder notes, soonest
-    /// first. Keeps the tab row uncluttered (no dedicated "Reminders" tab).
-    private var remindersToggle: some View {
-        Button {
-            withAnimation(.easeOut(duration: 0.18)) { showRemindersOnly.toggle() }
-        } label: {
-            Image(systemName: showRemindersOnly ? "bell.fill" : "bell")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(showRemindersOnly ? Color.black : AuraTheme.textSecondary)
-                .frame(width: 34, height: 34)
-                .background { if showRemindersOnly { Circle().fill(AuraTheme.activePill) } }
-                .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .help(showRemindersOnly ? "Show all" : "Show reminders")
     }
 
     /// Opens the in-app, full-page Settings screen (no native Settings window).
@@ -331,18 +305,12 @@ struct LibraryWindowView: View {
     private var filteredItems: [Item] {
         // While searching, show all matches across types; otherwise filter by tab.
         if isSearching { return searchResults }
-        if showRemindersOnly {
-            return store.libraryItems
-                .filter { $0.reminderAt != nil }
-                .sorted { ($0.reminderAt ?? .distantFuture) < ($1.reminderAt ?? .distantFuture) }
-        }
         if selectedTab == .all { return store.libraryItems }
         return store.libraryItems.filter { ContentTab.tabs(for: $0).contains(selectedTab) }
     }
 
     private var emptyTitle: String {
         if isSearching { return "No matches" }
-        if showRemindersOnly { return "No reminders yet" }
         return store.libraryItems.isEmpty ? "Nothing saved yet" : "Nothing in \(selectedTab.label)"
     }
 }

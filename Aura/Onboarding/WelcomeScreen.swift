@@ -1,9 +1,8 @@
 import SwiftUI
 import AppKit
-import UserNotifications
 
 /// Screen 1 — the app logo animates in, then the greeting, an optional name
-/// field, a notification-permission row, and a Continue button reveal in stages.
+/// field, and a Continue button reveal in stages.
 struct WelcomeScreen: View {
     /// Advances to the how-to carousel.
     let onContinue: () -> Void
@@ -12,7 +11,6 @@ struct WelcomeScreen: View {
 
     /// Staged reveal: 0 = nothing, 1 = logo + glow, 2 = greeting, 3 = controls.
     @State private var reveal = 0
-    @State private var notifStatus: UNAuthorizationStatus = .notDetermined
     @FocusState private var nameFocused: Bool
 
     var body: some View {
@@ -32,7 +30,6 @@ struct WelcomeScreen: View {
         .padding(.horizontal, 44)
         .frame(width: 560, height: 640)
         .task { await runEntrance() }
-        .task { await refreshNotifStatus() }
     }
 
     // MARK: - Logo + glow
@@ -72,12 +69,11 @@ struct WelcomeScreen: View {
         .animation(.smooth(duration: 0.42), value: reveal)
     }
 
-    // MARK: - Controls (name + notifications + continue)
+    // MARK: - Controls (name + continue)
 
     private var controls: some View {
         VStack(spacing: 14) {
             nameField
-            notificationRow
 
             Button("Continue") { onContinue() }
                 .buttonStyle(AuraPrimaryButtonStyle(fill: true))
@@ -111,58 +107,7 @@ struct WelcomeScreen: View {
             .animation(.easeOut(duration: 0.15), value: nameFocused)
     }
 
-    private var notificationRow: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "bell.badge.fill")
-                .font(.system(size: 16))
-                .foregroundStyle(AuraTheme.textSecondary)
-                .frame(width: 22)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Notifications")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(AuraTheme.textPrimary)
-                Text("Occasional nudges to revisit what you saved.")
-                    .font(.system(size: 11.5))
-                    .foregroundStyle(AuraTheme.textTertiary)
-            }
-
-            Spacer(minLength: 6)
-
-            notificationControl
-        }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 11)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(AuraTheme.surface)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(AuraTheme.hairline, lineWidth: 1)
-        )
-    }
-
-    @ViewBuilder
-    private var notificationControl: some View {
-        switch notifStatus {
-        case .authorized, .provisional, .ephemeral:
-            HStack(spacing: 4) {
-                Image(systemName: "checkmark.circle.fill")
-                Text("Enabled")
-            }
-            .font(.system(size: 12.5, weight: .medium))
-            .foregroundStyle(Color(hex: "#43C6AC")!)
-        case .denied:
-            Button("Open Settings") { openNotificationSettings() }
-                .buttonStyle(AuraSecondaryButtonStyle(compact: true))
-        default:
-            Button("Enable") { requestNotifications() }
-                .buttonStyle(AuraSecondaryButtonStyle(compact: true))
-        }
-    }
-
-    // MARK: - Animation + permissions
+    // MARK: - Animation
 
     @MainActor
     private func runEntrance() async {
@@ -171,24 +116,5 @@ struct WelcomeScreen: View {
         reveal = 2
         try? await Task.sleep(for: .milliseconds(260))
         reveal = 3
-    }
-
-    private func refreshNotifStatus() async {
-        let settings = await UNUserNotificationCenter.current().notificationSettings()
-        notifStatus = settings.authorizationStatus
-    }
-
-    private func requestNotifications() {
-        Task {
-            let center = UNUserNotificationCenter.current()
-            _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
-            await refreshNotifStatus()
-        }
-    }
-
-    private func openNotificationSettings() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.notifications") {
-            NSWorkspace.shared.open(url)
-        }
     }
 }

@@ -1,6 +1,5 @@
 import AppKit
 import Carbon.HIToolbox
-import UserNotifications
 
 /// Creates the notch panel, starts clipboard watching, and wires the two
 /// together. The app stays an `.accessory` (menu-bar) agent throughout.
@@ -11,7 +10,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var libraryHotKey: GlobalHotKey?
     private var composeHotKey: GlobalHotKey?
     private var onboardingController: OnboardingController?
-    private var notificationDelegate: ReminderNotificationDelegate?
     private var didActivateApp = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -36,16 +34,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // New Note routes to the in-app composer when the Library is the key
         // window, otherwise to the notch (see routeNewNote).
         env.composeLauncher.compose = { [weak self] in self?.routeNewNote() }
-
-        // Reminders: present notifications while the app runs and open the
-        // Library on click; reconcile any reminders left from a prior launch.
-        let notifDelegate = ReminderNotificationDelegate(
-            dataStore: env.dataStore,
-            openLibrary: { launcher.open?() }
-        )
-        notificationDelegate = notifDelegate
-        UNUserNotificationCenter.current().delegate = notifDelegate
-        Task { await env.dataStore.reconcileReminders() }
 
         let watcher = env.clipboardWatcher
         watcher.onCandidate = { [weak controller] candidate in

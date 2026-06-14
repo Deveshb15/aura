@@ -183,10 +183,9 @@ final class DataStore {
     }
 
     /// Saves a brand-new text note authored in-app (the Library composer) or the
-    /// notch, optionally with a reminder. Scheduling the notification in the same
-    /// step avoids a save→update round trip and a transient reminder-less card.
-    /// Mirrors the `.text` branch of `save()` for title + embedded-link metadata.
-    func saveNote(text: String, reminderDate: Date?, sourceApp: String? = nil) async {
+    /// notch. Mirrors the `.text` branch of `save()` for title + embedded-link
+    /// metadata. The `sourceApp` marker is what routes the note to the Notes tab.
+    func saveNote(text: String, sourceApp: String? = nil) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
@@ -198,21 +197,10 @@ final class DataStore {
             item.host = url.host
             item.urlSubtype = URLClassifier.subtype(for: url).rawValue
         }
-        if let reminderDate {
-            item.reminderAt = reminderDate
-            item.reminderDelivered = false
-        }
 
         let toInsert = item
         do {
             try await dbPool.write { db in try toInsert.insert(db) }
-            if let reminderDate {
-                _ = await ReminderScheduler.schedule(
-                    itemID: toInsert.id,
-                    title: ReminderScheduler.reminderTitle(for: toInsert),
-                    body: ReminderScheduler.reminderBody(for: toInsert),
-                    fireDate: reminderDate)
-            }
             // Link-bearing notes enrich their preview before the search pass so
             // the corpus includes any fetched title/description (mirrors save()).
             if toInsert.linkURL != nil {
@@ -228,17 +216,13 @@ final class DataStore {
         }
     }
 
-    /// Applies a composer edit to a `.text` item: updates the text and its
-    /// reminder in ONE coherent write (so the two can't clobber each other),
-    /// recomputing the title + embedded-link metadata exactly as `save()` does,
-    /// then reschedules/cancels the notification and re-enriches link preview +
-    /// search. Returns the schedule result so the caller can hint when
-    /// notifications are denied. No-op for non-text items.
-    @discardableResult
-    func updateNote(_ item: Item, text: String, reminderDate: Date?) async -> ReminderScheduler.ScheduleResult {
-        guard item.itemType == .text else { return .noop }
+    /// Applies a composer edit to a `.text` item: updates the text, recomputing
+    /// the title + embedded-link metadata exactly as `save()` does, then
+    /// re-enriches link preview + search. No-op for non-text items.
+    func updateNote(_ item: Item, text: String) async {
+        guard item.itemType == .text else { return }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return .noop }
+        guard !trimmed.isEmpty else { return }
 
         var updated = item
         updated.textContent = trimmed
@@ -259,91 +243,13 @@ final class DataStore {
             updated.ogImagePath = nil
             updated.faviconPath = nil
         }
-
-        // Reset the delivered flag only when the fire time actually changes.
-        let reminderChanged = reminderDate != item.reminderAt
-        updated.reminderAt = reminderDate
-        if reminderDate == nil {
-            updated.reminderDelivered = nil
-        } else if reminderChanged {
-            updated.reminderDelivered = false
-        }
         updated.updatedAt = Date()
 
         let toSave = updated
         try? await dbPool.write { db in try toSave.update(db) }
-
-        var scheduleResult: ReminderScheduler.ScheduleResult = .noop
-        if let reminderDate {
-            scheduleResult = await ReminderScheduler.schedule(
-                itemID: toSave.id,
-                title: ReminderScheduler.reminderTitle(for: toSave),
-                body: ReminderScheduler.reminderBody(for: toSave),
-                fireDate: reminderDate)
-        } else {
-            ReminderScheduler.cancel(itemID: toSave.id)
-        }
 
         if newURL != nil, newURL != oldURL { await enrichLink(toSave) }
         await enrichForSearch(itemID: toSave.id)
-        return scheduleResult
-    }
-
-    // MARK: - Reminders
-
-    /// Sets or clears a reminder on an item: persists `reminderAt` /
-    /// `reminderDelivered` via `update(db)`, then schedules or cancels the local
-    /// notification. Pass `date == nil` to clear. Returns the schedule result so
-    /// the composer can surface a "turn on notifications" hint when denied. All
-    /// writes to `reminderAt` must route through here so the scheduled
-    /// notification stays in sync.
-    @discardableResult
-    func setReminder(_ item: Item, at date: Date?) async -> ReminderScheduler.ScheduleResult {
-        var updated = item
-        updated.reminderAt = date
-        updated.reminderDelivered = (date == nil) ? nil : false
-        updated.updatedAt = Date()
-        let toSave = updated
-        try? await dbPool.write { db in try toSave.update(db) }
-
-        if let date {
-            return await ReminderScheduler.schedule(
-                itemID: item.id,
-                title: ReminderScheduler.reminderTitle(for: toSave),
-                body: ReminderScheduler.reminderBody(for: toSave),
-                fireDate: date)
-        } else {
-            ReminderScheduler.cancel(itemID: item.id)
-            return .noop
-        }
-    }
-
-    /// Marks a reminder delivered (from the notification delegate). Updates only
-    /// the flag column to avoid clobbering concurrent enrich writers.
-    func markReminderDelivered(itemID: String) {
-        Task { [dbPool] in
-            try? await dbPool.write { db in
-                try db.execute(sql: "UPDATE item SET reminderDelivered = 1 WHERE id = ?",
-                               arguments: [itemID])
-            }
-        }
-    }
-
-    /// Launch-time reconciliation: re-add future pending reminders (in case the
-    /// system dropped them) and flag past undelivered ones as delivered. Reads
-    /// every reminder directly, not just the 400-row `libraryItems` window.
-    func reconcileReminders() async {
-        let reminders: [Item] = (try? await dbPool.read { db in
-            try Item.filter(Column("reminderAt") != nil).fetchAll(db)
-        }) ?? []
-        guard !reminders.isEmpty else { return }
-        let toDeliver = await ReminderScheduler.reconcile(items: reminders)
-        guard !toDeliver.isEmpty else { return }
-        let placeholders = toDeliver.map { _ in "?" }.joined(separator: ",")
-        try? await dbPool.write { db in
-            try db.execute(sql: "UPDATE item SET reminderDelivered = 1 WHERE id IN (\(placeholders))",
-                           arguments: StatementArguments(toDeliver))
-        }
     }
 
     // MARK: - Rich link previews
@@ -632,8 +538,6 @@ final class DataStore {
     func deleteAllItems() {
         let assetStore = self.assetStore
         let semanticIndex = self.semanticIndex
-        // Drop every scheduled/delivered reminder along with the vault.
-        ReminderScheduler.cancelAll()
         Task {
             do {
                 // Embedding rows cascade-delete with their items (foreign key);
@@ -719,8 +623,6 @@ final class DataStore {
         let assetPath = item.assetPath
         let assetStore = self.assetStore
         let semanticIndex = self.semanticIndex
-        // Cancel any scheduled reminder so it can't fire for a deleted note.
-        ReminderScheduler.cancel(itemID: id)
         Task {
             do {
                 // The embedding row cascade-deletes with the item; drop it from

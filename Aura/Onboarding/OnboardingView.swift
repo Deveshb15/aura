@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Root of the first-launch onboarding. A two-step flow: the welcome screen
-/// (logo + name + notifications) slides to the how-to carousel. Forces dark mode
-/// and the Aura canvas so it reads identically regardless of system appearance.
+/// (logo + name) slides to the how-to carousel. Forces dark mode and the Aura
+/// canvas so it reads identically regardless of system appearance.
 struct OnboardingView: View {
     /// Called once the user finishes onboarding (final "Get Started").
     let onFinish: () -> Void
