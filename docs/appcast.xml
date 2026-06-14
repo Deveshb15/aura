@@ -3,6 +3,22 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>2.1.1</title>
+            <pubDate>Sun, 14 Jun 2026 23:24:51 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>17</sparkle:version>
+            <sparkle:shortVersionString>2.1.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Light mode, inline notes, sharper search</h2>
+<ul>
+  <li><b>Light & dark themes.</b> A new sun/moon switch beside the gear flips Carpet between a soft paper-white light theme and the original dark — your pick sticks. Dark stays the default, and the notch stays dark in both.</li>
+  <li><b>Edit notes in place.</b> Notes now open and edit right inside the library card — no more modal. Press ⌘N (or use the notch) to start a new note as a focused card at the top of the grid.</li>
+  <li><b>Sharper search.</b> Results are keyword-authoritative, with on-device semantics used only to re-rank — so what you type is what you find.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.1.1/Carpet-2.1.1.dmg" length="17832892" type="application/octet-stream" sparkle:edSignature="j0WmksWLN/XqBgNCzcyPqZBespMQs3DdfL1pU0VpFaeZLa+1OUyCtT7Vwa3gzc/qvprT7yjFu5Fli9NuxqajCA=="/>
+        </item>
+        <item>
             <title>2.1.0</title>
             <pubDate>Sun, 14 Jun 2026 20:41:28 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -60,25 +76,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.7.0/Aura-1.7.0.dmg" length="12017815" type="application/octet-stream" sparkle:edSignature="C1VH+8aAR9Pud2Gc0b/G8lU7s+cIhYDC9V+nFhoZGXpUHkgX6bobDPsdMrLdCucnL0zH5ZtuSHqgLYIrZvDtBA=="/>
-        </item>
-        <item>
-            <title>1.6.0</title>
-            <pubDate>Fri, 12 Jun 2026 18:27:43 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>12</sparkle:version>
-            <sparkle:shortVersionString>1.6.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>A proper welcome</h2>
-<p>First launch now greets you with a quick walkthrough — the logo animates in, you can set your name and turn on notifications, then a short carousel shows how Aura works: copy to nudge, <strong>⌥⌘V</strong> for your library, <strong>⌃⌘N</strong> for a quick note, and drag-to-save.</p>
-<h2>Reminders, just write them</h2>
-<p>Write a note like “call mom tomorrow at 6” and Aura reads the time out of it and reminds you — a local notification, no setup. Click it to jump straight to the item.</p>
-<h2>Notes without the notch</h2>
-<ul>
-  <li>When the Library is open, <strong>New Note</strong> composes right in the window instead of popping the notch.</li>
-  <li>Redesigned Settings, plus you can now <strong>export your whole vault</strong>.</li>
-</ul>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v1.6.0/Aura-1.6.0.dmg" length="11864621" type="application/octet-stream" sparkle:edSignature="5TCLLZNqzdgPDmAQxTJq3ayFu/yikUqFz+f2D1bfEfnDaA1IETdULUv+exsthhB071VByAxntOHO4TXDp/d8Cg=="/>
         </item>
     </channel>
 </rss>
