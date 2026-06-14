@@ -36,7 +36,7 @@ struct WelcomeScreen: View {
 
     private var logo: some View {
         ZStack {
-            AuraGlow(size: 300, intensity: 0.55)
+            SkyBackdrop(size: 300, intensity: 0.55)
                 .scaleEffect(reveal >= 1 ? 1 : 0.4)
                 .opacity(reveal >= 1 ? (reveal >= 3 ? 0.6 : 0.95) : 0)
                 .animation(.smooth(duration: 0.6), value: reveal)
@@ -45,7 +45,7 @@ struct WelcomeScreen: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 128, height: 128)
-                .shadow(color: AuraTheme.accentDot.opacity(0.3), radius: 26, y: 6)
+                .shadow(color: AuraTheme.sky.opacity(0.35), radius: 26, y: 6)
                 .scaleEffect(reveal >= 1 ? 1 : 0.7)
                 .offset(y: reveal >= 1 ? 0 : 30)
                 .opacity(reveal >= 1 ? 1 : 0)
@@ -101,7 +101,7 @@ struct WelcomeScreen: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(nameFocused ? AuraTheme.accentDot.opacity(0.7) : AuraTheme.hairline,
+                    .stroke(nameFocused ? AuraTheme.sky.opacity(0.7) : AuraTheme.hairline,
                             lineWidth: 1)
             )
             .animation(.easeOut(duration: 0.15), value: nameFocused)

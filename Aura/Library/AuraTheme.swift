@@ -15,6 +15,12 @@ enum AuraTheme {
     static let accentDot    = Color(hex: "#FF5C8A")!
     static let activePill   = Color.white
     static let destructive  = Color(hex: "#FF6B6B")!
+
+    /// Sky-blue brand accent — the flying-carpet "sky" that the app icon and DMG
+    /// installer lead with. Used by the onboarding atmosphere + accents (kept out
+    /// of the working surfaces, which stay on `accentDot`).
+    static let sky          = Color(hex: "#5C9CEC")!
+    static let skyDeep      = Color(hex: "#4C9ADC")!
 }
 
 /// Awesome Serif, addressed by its exact PostScript name per weight × height.

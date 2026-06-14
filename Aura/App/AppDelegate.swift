@@ -67,13 +67,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             presentOnboarding()
         }
-
-        // Settings → "Replay Welcome…" re-opens onboarding on demand.
-        NotificationCenter.default.addObserver(
-            forName: .auraReplayOnboarding, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.presentOnboarding() }
-        }
     }
 
     /// New Note routing: compose in the Library window when it's the key window
@@ -108,9 +101,4 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         onboardingController = controller
         controller.show()
     }
-}
-
-extension Notification.Name {
-    /// Posted by Settings to replay the first-launch onboarding flow.
-    static let auraReplayOnboarding = Notification.Name("auraReplayOnboarding")
 }

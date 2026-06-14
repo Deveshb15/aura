@@ -41,7 +41,7 @@ struct OnboardingCarousel: View {
         HStack(spacing: 7) {
             ForEach(pages.indices, id: \.self) { i in
                 Capsule()
-                    .fill(i == index ? AuraTheme.accentDot : Color.white.opacity(0.18))
+                    .fill(i == index ? AuraTheme.sky : Color.white.opacity(0.18))
                     .frame(width: i == index ? 18 : 6, height: 6)
                     .animation(.spring(response: 0.4, dampingFraction: 1.0), value: index)
                     .onTapGesture { index = i }
