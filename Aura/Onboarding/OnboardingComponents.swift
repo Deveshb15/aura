@@ -67,21 +67,34 @@ struct HelpFooter: View {
         HStack(spacing: 5) {
             Text("Need help? Reach out to")
                 .foregroundStyle(AuraTheme.textTertiary)
-            handle("@akhil_bvs", url: "https://x.com/akhil_bvs")
+            HelpHandle(label: "@akhil_bvs", url: "https://x.com/akhil_bvs")
             Text("or")
                 .foregroundStyle(AuraTheme.textTertiary)
-            handle("@deveshb15", url: "https://x.com/deveshb15")
+            HelpHandle(label: "@deveshb15", url: "https://x.com/deveshb15")
         }
         .font(.system(size: 11.5))
     }
+}
 
-    private func handle(_ label: String, url: String) -> some View {
+/// A tappable X handle in the help footer: uses the app's rose accent, shows a
+/// pointing-hand cursor on hover, and dims slightly while hovered.
+private struct HelpHandle: View {
+    let label: String
+    let url: String
+    @State private var hovering = false
+
+    var body: some View {
         Button(label) {
             if let u = URL(string: url) { NSWorkspace.shared.open(u) }
         }
         .buttonStyle(.plain)
         .font(.system(size: 11.5, weight: .semibold))
-        .foregroundStyle(AuraTheme.sky)
+        .foregroundStyle(AuraTheme.accentDot)
+        .opacity(hovering ? 0.78 : 1)
+        .onHover { inside in
+            hovering = inside
+            if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+        }
         .help("Open \(label) on X")
     }
 }
