@@ -1,10 +1,10 @@
-// Service worker: the only context that can talk to Aura's native-messaging
+// Service worker: the only context that can talk to Carpet's native-messaging
 // host. It receives parsed tweets from the content scripts and forwards each
 // as a {type:'save'} message to the desktop app. No polling, no cookies, no
 // request replay — capture happens only while the user is on x.com.
 //
 // Talks to the app via Chrome Native Messaging (host name app.captureaura.xhost);
-// Aura installs the host manifest into the browser on launch, so install order
+// Carpet installs the host manifest into the browser on launch, so install order
 // doesn't matter. Media is sent as URLs (tiny payloads) and the app downloads
 // the bytes itself.
 
@@ -70,7 +70,7 @@ async function handleTweets(mode, tweets) {
 
   // Only FORWARD consults `seen` (so passive sync doesn't re-import the same
   // page on every visit). bulk + click send everything and let the APP dedup
-  // by tweet id — the Aura vault is the source of truth, not this extension's
+  // by tweet id — the Carpet vault is the source of truth, not this extension's
   // separate memory. (Consulting `seen` here is what starved bulk import.)
   const toImport = (mode === 'forward')
     ? tweets.filter((t) => t && t.tweetId && !seen.has(t.tweetId))
@@ -81,7 +81,7 @@ async function handleTweets(mode, tweets) {
   }
 
   // First save doubles as the reachability probe so callers can report
-  // "open Aura first" immediately instead of after a long loop.
+  // "open Carpet first" immediately instead of after a long loop.
   const first = await saveTweet(toImport[0]);
   if (first.offline) return { ok: false, offline: true };
 

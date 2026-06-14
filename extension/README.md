@@ -1,21 +1,21 @@
-# Aura — X bookmark sync extension
+# Carpet — X bookmark sync extension
 
 A small companion extension that saves your **X (Twitter) bookmarks** into your
-local Aura library. It is **passive**: it never logs in for you and never calls
+local Carpet library. It is **passive**: it never logs in for you and never calls
 X's API — it only reads the bookmarks page's *own* responses while you browse,
 exactly the way the page already loaded them, and forwards each bookmarked tweet
-to the Aura desktop app over Chrome Native Messaging.
+to the Carpet desktop app over Chrome Native Messaging.
 
 ## What it does
 
 - **Forward sync** — while you're on x.com, anything you bookmark is saved to
-  Aura automatically (author, handle, avatar, text, and the first image / video
+  Carpet automatically (author, handle, avatar, text, and the first image / video
   poster). Your existing bookmarks are silently baselined the first time, so the
   library isn't flooded.
 - **Instant capture** — clicking the bookmark button anywhere on X saves that
-  tweet immediately, with an in-page "Saved to Aura" confirmation.
+  tweet immediately, with an in-page "Saved to Carpet" confirmation.
 - **One-time history import** — *Settings → X bookmarks → Import my bookmarks*
-  in Aura opens your bookmarks and pulls in up to **400** existing ones as it
+  in Carpet opens your bookmarks and pulls in up to **400** existing ones as it
   gently scrolls.
 
 No background polling, no cookies, no request replay — capture only happens
@@ -27,12 +27,12 @@ while you're actually on x.com. Everything stays on your Mac.
    `edge://extensions`, …).
 2. Turn on **Developer mode** (top-right).
 3. Click **Load unpacked** and choose this `extension` folder.
-4. Launch **Aura** at least once — it installs the native-messaging host the
-   extension talks to. (Install order doesn't matter; just open Aura once.)
-5. Open **x.com** and bookmark something. You should see "Saved to Aura".
+4. Launch **Carpet** at least once — it installs the native-messaging host the
+   extension talks to. (Install order doesn't matter; just open Carpet once.)
+5. Open **x.com** and bookmark something. You should see "Saved to Carpet".
 
 The extension's ID is pinned (`gmombdkcjjnlgcbfanhcfgabpjkajdbn`) via the `key`
-in `manifest.json`, so Aura's native-messaging host can whitelist it even when
+in `manifest.json`, so Carpet's native-messaging host can whitelist it even when
 loaded unpacked.
 
 ## How it's wired
@@ -42,10 +42,10 @@ x.com page  ──fetch/XHR hook──►  content scripts  ──chrome.runtime
  (Bookmarks GraphQL)              (parse tweets)                        (native messaging)
                                                                               │
                                                   app.captureaura.xhost  ◄────┘
-                                                  (aura-x-host helper, bundled in Aura.app)
+                                                  (aura-x-host helper, bundled in Carpet.app)
                                                           │ loopback + token
                                                           ▼
-                                                       Aura.app  → downloads media → saves Item
+                                                       Carpet.app  → downloads media → saves Item
 ```
 
 - `content/x-graphql-interceptor.js` (MAIN world) wraps `fetch`/`XMLHttpRequest`

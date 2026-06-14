@@ -60,7 +60,7 @@ window.addEventListener('message', (event) => {
   }
 });
 
-// ── One-time bulk import (triggered by Aura opening /i/bookmarks?aura_import=1) ──
+// ── One-time bulk import (triggered by Carpet opening /i/bookmarks?aura_import=1) ──
 function maybeStartBulk() {
   try {
     const u = new URL(location.href);
@@ -137,14 +137,14 @@ function finishBulk() {
     const { imported, duplicates, failed } = b.stats;
     console.debug('[aura] bulk finished —', { fetched: b.fetched, imported, duplicates, failed, offline: b.offline });
     if (b.offline) {
-      showToast('Open Aura first, then import again.', { tone: 'error' });
+      showToast('Open Carpet first, then import again.', { tone: 'error' });
     } else if (b.fetched === 0) {
       showToast('No bookmarks found to import.', { tone: 'error' });
     } else if (imported > 0) {
-      showToast(`Imported ${imported} bookmark${imported === 1 ? '' : 's'} to Aura`
+      showToast(`Imported ${imported} bookmark${imported === 1 ? '' : 's'} to Carpet`
         + (duplicates > 0 ? ` · ${duplicates} already saved` : ''));
     } else if (duplicates > 0) {
-      showToast(`All ${duplicates} already in Aura`);
+      showToast(`All ${duplicates} already in Carpet`);
     } else {
       showToast(failed > 0 ? `Couldn't save ${failed} bookmark${failed === 1 ? '' : 's'}` : 'Nothing imported',
         { tone: 'error' });
@@ -161,16 +161,20 @@ function showBulkControl() {
   const el = document.createElement('div');
   el.style.cssText = [
     'position:fixed', 'right:24px', 'bottom:24px', 'z-index:2147483647',
-    'display:flex', 'align-items:center', 'gap:12px', 'padding:9px 9px 9px 16px',
+    'display:flex', 'align-items:center', 'gap:11px', 'padding:8px 8px 8px 13px',
     'font:500 13px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif',
     'color:rgba(255,255,255,0.96)', 'background:rgba(20,20,22,0.88)',
     'backdrop-filter:blur(20px) saturate(1.6)', '-webkit-backdrop-filter:blur(20px) saturate(1.6)',
     'border:0.5px solid rgba(255,255,255,0.14)', 'border-radius:999px',
     'box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 22px rgba(0,0,0,0.28)',
   ].join(';');
+  const logo = document.createElement('img');
+  logo.src = chrome.runtime.getURL('icons/icon48.png');
+  logo.alt = '';
+  logo.style.cssText = 'width:20px;height:20px;border-radius:6px;display:block;flex:0 0 auto';
   const label = document.createElement('span');
   label.className = 'aura-bulk-label';
-  label.textContent = 'Importing your bookmarks…';
+  label.textContent = 'Importing to Carpet…';
   const btn = document.createElement('button');
   btn.textContent = 'Stop & import';
   btn.style.cssText = [
@@ -179,6 +183,7 @@ function showBulkControl() {
     'color:#0b0b0d', 'background:#ffffff', 'padding:8px 13px', 'border-radius:999px',
   ].join(';');
   btn.addEventListener('click', (e) => { e.preventDefault(); finishBulk(); });
+  el.appendChild(logo);
   el.appendChild(label);
   el.appendChild(btn);
   document.body.appendChild(el);
@@ -190,7 +195,7 @@ function updateBulkControl() {
   const label = bulkControlEl && bulkControlEl.querySelector('.aura-bulk-label');
   if (!label || !bulk) return;
   const saved = bulk.stats.imported + bulk.stats.duplicates;
-  label.textContent = saved > 0 ? `Importing… ${saved} saved` : 'Importing your bookmarks…';
+  label.textContent = saved > 0 ? `Importing… ${saved} saved` : 'Importing to Carpet…';
 }
 function hideBulkControl() {
   if (bulkEscHandler) { window.removeEventListener('keydown', bulkEscHandler, true); bulkEscHandler = null; }
@@ -217,8 +222,8 @@ document.addEventListener('click', (e) => {
   chrome.runtime.sendMessage({ type: 'aura:tweets', mode: 'click', tweets: [tweet] }, (resp) => {
     if (!resp) return;
     if (resp.offline) return;                       // app closed — stay quiet
-    if (resp.ok) showToast(resp.duplicate ? 'Already in Aura' : 'Saved to Aura');
-    else showToast(`Aura save failed: ${resp.error || 'unknown error'}`, { tone: 'error' });
+    if (resp.ok) showToast(resp.duplicate ? 'Already in Carpet' : 'Saved to Carpet');
+    else showToast(`Carpet save failed: ${resp.error || 'unknown error'}`, { tone: 'error' });
   });
 }, true);
 
@@ -279,20 +284,29 @@ function showToast(message, { tone = 'ok', sticky = false } = {}) {
     toastEl = document.createElement('div');
     toastEl.style.cssText = [
       'position:fixed', 'right:24px', 'bottom:24px', 'z-index:2147483647',
-      'display:flex', 'align-items:center', 'gap:8px', 'padding:10px 14px',
+      'display:flex', 'align-items:center', 'gap:9px', 'padding:9px 14px 9px 10px',
       'font:500 13px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif',
-      'color:rgba(255,255,255,0.96)', 'background:rgba(20,20,22,0.82)',
+      'color:rgba(255,255,255,0.96)', 'background:rgba(20,20,22,0.85)',
       'backdrop-filter:blur(20px) saturate(1.6)', '-webkit-backdrop-filter:blur(20px) saturate(1.6)',
       'border:0.5px solid rgba(255,255,255,0.14)', 'border-radius:999px',
       'box-shadow:0 1px 2px rgba(0,0,0,0.2),0 8px 22px rgba(0,0,0,0.28)',
       'opacity:0', 'transform:translateY(8px)', 'transition:opacity .16s ease,transform .16s ease',
       'pointer-events:none',
     ].join(';');
+    const logo = document.createElement('img');
+    logo.src = chrome.runtime.getURL('icons/icon48.png');
+    logo.alt = '';
+    logo.style.cssText = 'width:16px;height:16px;border-radius:4px;display:block;flex:0 0 auto';
+    const text = document.createElement('span');
+    text.className = 'carpet-toast-text';
+    toastEl.appendChild(logo);
+    toastEl.appendChild(text);
     document.body.appendChild(toastEl);
   }
-  const dot = tone === 'error' ? 'rgba(255,90,90,0.95)' : 'rgba(110,220,140,0.95)';
-  toastEl.innerHTML = `<span style="width:6px;height:6px;border-radius:50%;background:${dot};display:inline-block"></span><span></span>`;
-  toastEl.querySelector('span:last-child').textContent = message;
+  // Error tone gets a subtle rose-red border (the app's destructive); the Carpet
+  // mark always leads so the toast is unmistakably ours, not x.com's.
+  toastEl.style.borderColor = tone === 'error' ? 'rgba(255,107,107,0.5)' : 'rgba(255,255,255,0.14)';
+  toastEl.querySelector('.carpet-toast-text').textContent = message;
   requestAnimationFrame(() => { toastEl.style.opacity = '1'; toastEl.style.transform = 'translateY(0)'; });
   if (toastTimer) clearTimeout(toastTimer);
   if (!sticky) {
