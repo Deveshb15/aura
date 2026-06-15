@@ -1,20 +1,23 @@
 <div align="center">
 
-<img src="docs/icon.png" width="120" alt="Aura" />
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/logo_with_text.png" />
+  <img src="assets/logo_with_text_dark.png" width="300" alt="Carpet" />
+</picture>
 
-# Aura
+<br/>
 
 **Copy anything. It lands in your notch. Find it forever.**
 
 A tiny menu-bar app that turns your Mac's notch into a capture vault. Copy or drag in a
-link, a paragraph, an image, a file, a color — Aura quietly catches it with a soft nudge,
+link, a paragraph, an image, a file, a color — Carpet quietly catches it with a soft nudge,
 and it all lands in a beautiful, searchable library. 100% local. ✨
 
 [**↓ Download for macOS**](https://github.com/Deveshb15/aura/releases/latest) &nbsp;·&nbsp; macOS 14+ &nbsp;·&nbsp; Apple Silicon &amp; Intel
 
 <br/>
 
-<img src="docs/library.png" width="860" alt="The Aura library — a dark serif bento grid of saved videos, links, text and images under an 'Ask your Memory…' search field" />
+<img src="docs/library.png" width="860" alt="The Carpet library — a dark serif bento grid of saved notes, links, text and images under an 'Ask your Memory…' search field" />
 
 </div>
 
@@ -22,7 +25,7 @@ and it all lands in a beautiful, searchable library. 100% local. ✨
 
 ## What it is
 
-Aura lives in your Mac's notch (or a small pill, if your Mac has no notch). Copy
+Carpet lives in your Mac's notch (or a small pill, if your Mac has no notch). Copy
 something — a link, a snippet, an image, a hex color — and the notch gives a soft
 rubber-band **nudge**. Hover to keep it; ignore it and it slips away. You can also
 drag files and links straight onto the notch, and drag saved items back out.
@@ -48,7 +51,7 @@ library from anywhere.
 
 ## Ask your Memory
 
-Search is the heart of Aura, and it's **semantic** — it reads what you actually saved, not
+Search is the heart of Carpet, and it's **semantic** — it reads what you actually saved, not
 just titles. Text in your screenshots (OCR), the readable body of the articles behind your
 links, video titles and descriptions — each item is turned into an embedding with Apple's
 on-device **NaturalLanguage** models, and your library is ranked by *meaning*. So
@@ -67,13 +70,13 @@ same semantic-ranked grid, just without the written answer. Either way, nothing 
 <table>
 <tr>
 <td width="46%" valign="middle">
-<img src="docs/dmg.png" alt="The Aura disk image: a dark 'drag to Applications' screen" />
+<img src="docs/dmg.png" alt="The Carpet disk image: a dark 'drag to Applications' screen" />
 </td>
 <td width="54%" valign="top">
 
-1. Download **`Aura.dmg`** from [**Releases**](https://github.com/Deveshb15/aura/releases/latest).
-2. Open it and drag **Aura** into your **Applications** folder.
-3. Launch it — Aura lives in the **menu bar / notch** (no Dock icon).
+1. Download **`Carpet.dmg`** from [**Releases**](https://github.com/Deveshb15/aura/releases/latest).
+2. Open it and drag **Carpet** into your **Applications** folder.
+3. Launch it — Carpet lives in the **menu bar / notch** (no Dock icon).
 
 Signed with a Developer ID and **notarized by Apple**, so it opens with no Gatekeeper
 warnings. Requires **macOS 14** or later.
