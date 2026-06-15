@@ -1,12 +1,14 @@
 import SwiftUI
 
-/// Screen 2 — a horizontal "how to use" carousel. macOS has no paged `TabView`,
-/// so this is a simple index-driven `HStack` that slides with the app's spring.
+/// The four-page intro pager (welcome → drop to save → remembers → auto
+/// categorise). macOS has no paged `TabView`, so this is a simple index-driven
+/// `HStack` that slides with the app's spring.
 struct OnboardingCarousel: View {
-    /// Called when the user finishes the final page ("Get Started").
-    let onFinish: () -> Void
+    /// Called when the user advances past the final page ("Continue") — the
+    /// flow then moves on to the launch-at-login step.
+    let onContinue: () -> Void
 
-    private let pages = HowToPage.all
+    private let pages = OnboardingPage.all
     private let pageWidth: CGFloat = 560
     @State private var index = 0
 
@@ -14,8 +16,8 @@ struct OnboardingCarousel: View {
         VStack(spacing: 0) {
             // Sliding pages — each is full-width; the row is clipped to one page.
             HStack(spacing: 0) {
-                ForEach(pages) { page in
-                    HowToPageView(page: page)
+                ForEach(Array(pages.enumerated()), id: \.element.id) { i, page in
+                    OnboardingPageView(page: page, isActive: i == index)
                         .frame(width: pageWidth)
                 }
             }
@@ -59,7 +61,7 @@ struct OnboardingCarousel: View {
             Spacer()
 
             if index == pages.count - 1 {
-                Button("Get Started") { onFinish() }
+                Button("Continue") { onContinue() }
                     .buttonStyle(AuraPrimaryButtonStyle())
             } else {
                 Button("Next") { index += 1 }
