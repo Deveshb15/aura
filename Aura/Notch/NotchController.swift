@@ -15,7 +15,10 @@ final class NotchController {
     /// Called when the user clicks the notch / "Aura" header to open the library.
     var onOpenLibrary: (() -> Void)?
 
-    private var geometry: NotchGeometry
+    /// Set at launch (a display always exists then) and only ever replaced with
+    /// a non-nil recompute, so it's effectively always present — an IUO avoids
+    /// threading optionals through its ~20 call sites. See `screensChanged`.
+    private var geometry: NotchGeometry!
     private var panel: NotchPanel?
     private var container: NotchContainerView?
     private var hostingView: NSHostingView<NotchRootView>?
@@ -120,7 +123,10 @@ final class NotchController {
     }
 
     private func screensChanged() {
-        geometry = NotchGeometry.current()
+        // Keep the last good geometry if the displays momentarily report empty
+        // (mid-reconfiguration) rather than crashing or blanking the notch.
+        guard let updated = NotchGeometry.current() else { return }
+        geometry = updated
         // Move the panel onto the (possibly new) notched/main screen and ensure
         // it's still on top after relocating. Falls back to the top-center pill
         // when no notched screen is present (e.g. clamshell on an external).
@@ -437,7 +443,14 @@ final class NotchController {
         switch candidate.payload {
         case .text(let value): return .text(value)
         case .url(let url): return .url(url.absoluteString)
-        case .image(let data): return .image(NSImage(data: data) ?? NSImage())
+        case .image(let data):
+            // Downsample for the small nudge card rather than decoding the full
+            // image: a 360 pt card never needs a multi-MB bitmap, and the full
+            // decode — held for the ~2.5 s nudge lifetime — was a needless memory
+            // spike on large screenshots.
+            let preview = ImageDownsampler.image(from: data, maxPixel: 400)?.image
+                ?? NSImage(data: data) ?? NSImage()
+            return .image(preview)
         case .file(let url): return .file(url.lastPathComponent)
         case .color(let hex): return .color(hex)
         }

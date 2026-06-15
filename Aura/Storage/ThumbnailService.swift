@@ -21,16 +21,22 @@ enum ThumbnailService {
         return make(from: source, maxPixel: maxPixel)
     }
 
-    private static func make(from source: CGImageSource, maxPixel: CGFloat) -> Thumb? {
+    /// Shared ImageIO downsample → `CGImage`. Decodes directly at the target
+    /// size, so callers never hold a full-resolution bitmap. Reused for both the
+    /// stored JPEG thumbnails here and the bounded in-memory display caches
+    /// (see `ImageDownsampler`).
+    static func cgThumbnail(from source: CGImageSource, maxPixel: CGFloat) -> CGImage? {
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,
             kCGImageSourceShouldCacheImmediately: true,
             kCGImageSourceCreateThumbnailWithTransform: true,
             kCGImageSourceThumbnailMaxPixelSize: maxPixel,
         ]
-        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
-            return nil
-        }
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+    }
+
+    private static func make(from source: CGImageSource, maxPixel: CGFloat) -> Thumb? {
+        guard let cgImage = cgThumbnail(from: source, maxPixel: maxPixel) else { return nil }
         let rep = NSBitmapImageRep(cgImage: cgImage)
         guard let data = rep.representation(using: .jpeg, properties: [.compressionFactor: 0.8]) else {
             return nil

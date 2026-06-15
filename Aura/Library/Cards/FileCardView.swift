@@ -5,7 +5,7 @@ struct FileCardView: View {
     let item: Item
 
     var body: some View {
-        if let data = item.thumbnail, let image = NSImage(data: data) {
+        if let data = item.thumbnail, let image = ThumbnailCache.image(id: item.id, data: data) {
             VStack(alignment: .leading, spacing: 0) {
                 Image(nsImage: image)
                     .resizable()

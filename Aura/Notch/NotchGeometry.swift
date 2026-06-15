@@ -31,8 +31,19 @@ struct NotchGeometry {
     static let composeWidth: CGFloat = 520
     static let composeHeight: CGFloat = 260
 
-    static func current() -> NotchGeometry {
-        let screen = notchedScreen() ?? NSScreen.main ?? NSScreen.screens.first!
+    /// Remembers the last real screen. During display reconfiguration
+    /// (lid close / unplug / sleep) `NSScreen.screens` can briefly be empty and
+    /// `NSScreen.main` nil — the old `NSScreen.screens.first!` force-unwrap
+    /// crashed there. Falling back to the remembered screen (and returning nil
+    /// only if no display was ever seen) keeps the app alive; callers then keep
+    /// their previous geometry.
+    private static var lastScreen: NSScreen?
+
+    static func current() -> NotchGeometry? {
+        guard let screen = notchedScreen() ?? NSScreen.main ?? NSScreen.screens.first ?? lastScreen else {
+            return nil
+        }
+        lastScreen = screen
         let topInset = screen.safeAreaInsets.top
         let hasNotch = topInset > 0
         let height = hasNotch ? topInset : 32

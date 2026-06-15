@@ -18,7 +18,7 @@ struct ImageCardView: View {
     }
 
     private var loadedImage: NSImage? {
-        if let data = item.thumbnail, let image = NSImage(data: data) {
+        if let data = item.thumbnail, let image = ThumbnailCache.image(id: item.id, data: data) {
             return image
         }
         return DiskImage.load(assetURL)

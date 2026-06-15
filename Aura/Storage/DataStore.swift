@@ -29,6 +29,14 @@ final class DataStore {
     /// above the previous one (the library orders by `createdAt` desc).
     @ObservationIgnored private var lastXStamp = Date.distantPast
 
+    /// Debounce state for the item observation: a burst of writes (backfills,
+    /// imports, per-item enrichment) would otherwise trigger N full 400-row
+    /// refetches + grid re-renders. The first delivery paints immediately; the
+    /// rest are coalesced into one update per short window.
+    @ObservationIgnored private var didLoadInitialItems = false
+    @ObservationIgnored private var pendingItems: [Item]?
+    @ObservationIgnored private var itemsFlushScheduled = false
+
     init(dbPool: DatabasePool, assetStore: AssetStore) {
         self.dbPool = dbPool
         self.assetStore = assetStore
@@ -50,11 +58,7 @@ final class DataStore {
             in: dbPool,
             scheduling: .immediate,
             onError: { error in NSLog("Aura: item observation error: \(error)") },
-            onChange: { [weak self] items in
-                guard let self else { return }
-                self.libraryItems = items
-                self.recentItems = Array(items.prefix(40))
-            }
+            onChange: { [weak self] items in self?.scheduleItemsUpdate(items) }
         )
 
         let collections = ValueObservation.tracking { db in
@@ -66,6 +70,33 @@ final class DataStore {
             onError: { error in NSLog("Aura: collection observation error: \(error)") },
             onChange: { [weak self] collections in self?.collections = collections }
         )
+    }
+
+    /// Applies an observed item snapshot, coalescing rapid bursts. The very
+    /// first delivery paints immediately so the library never flashes empty;
+    /// subsequent updates collapse onto a short debounce window.
+    private func scheduleItemsUpdate(_ items: [Item]) {
+        guard didLoadInitialItems else {
+            didLoadInitialItems = true
+            applyItems(items)
+            return
+        }
+        pendingItems = items
+        guard !itemsFlushScheduled else { return }
+        itemsFlushScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) { [weak self] in
+            guard let self else { return }
+            self.itemsFlushScheduled = false
+            if let latest = self.pendingItems {
+                self.pendingItems = nil
+                self.applyItems(latest)
+            }
+        }
+    }
+
+    private func applyItems(_ items: [Item]) {
+        libraryItems = items
+        recentItems = Array(items.prefix(40))
     }
 
     // MARK: - Collections
@@ -139,14 +170,19 @@ final class DataStore {
             item.title = hex
 
         case .image(let data):
-            populateImage(&item, data: data)
+            await populateImage(&item, data: data)
 
         case .file(let url):
-            if AssetStore.isImageFile(url), let data = try? Data(contentsOf: url) {
-                populateImage(&item, data: data, originalName: url.lastPathComponent)
+            let isImage = AssetStore.isImageFile(url)
+            let imageData = isImage
+                ? await Task.detached(priority: .userInitiated) { try? Data(contentsOf: url) }.value
+                : nil
+            if let imageData {
+                await populateImage(&item, data: imageData, originalName: url.lastPathComponent)
             } else {
                 item.type = ItemType.file.rawValue
-                if let stored = try? assetStore.storeFile(at: url) {
+                let assetStore = self.assetStore
+                if let stored = await Task.detached(priority: .userInitiated, operation: { try? assetStore.storeFile(at: url) }).value {
                     item.assetPath = stored.relativePath
                     item.uti = stored.uti
                     item.byteSize = stored.byteSize
@@ -266,16 +302,22 @@ final class DataStore {
         let meta = await LinkMetadataService.fetch(url: url)
 
         var updated = item
+        let assetStore = self.assetStore
         if let imageData = meta.imageData {
-            // Downsample the hero image so cards stay light.
-            let toStore = ThumbnailService.make(fromImageData: imageData)?.data ?? imageData
-            if let stored = try? assetStore.storeImage(toStore, subdir: "og") {
-                updated.ogImagePath = stored.relativePath
-            }
+            // Downsample the hero image so cards stay light — off the main actor
+            // (decode + re-encode + disk write would otherwise run on it here,
+            // since this method is reached from a main-actor `Task`).
+            let stored = await Task.detached(priority: .utility) { () -> AssetStore.Stored? in
+                let toStore = ThumbnailService.make(fromImageData: imageData)?.data ?? imageData
+                return try? assetStore.storeImage(toStore, subdir: "og")
+            }.value
+            if let stored { updated.ogImagePath = stored.relativePath }
         }
-        if let iconData = meta.iconData,
-           let stored = try? assetStore.storeImage(iconData, subdir: "favicon") {
-            updated.faviconPath = stored.relativePath
+        if let iconData = meta.iconData {
+            let stored = await Task.detached(priority: .utility) {
+                try? assetStore.storeImage(iconData, subdir: "favicon")
+            }.value
+            if let stored { updated.faviconPath = stored.relativePath }
         }
         if let description = meta.description { updated.ogDescription = description }
         // Always set ogTitle (falling back to host) so this item is marked
@@ -551,20 +593,29 @@ final class DataStore {
         }
     }
 
-    private func populateImage(_ item: inout Item, data: Data, originalName: String? = nil) {
+    /// Writes the original bytes to disk and generates a thumbnail. The image
+    /// decode + JPEG re-encode and the disk write run OFF the main actor — they
+    /// used to run synchronously here on every image keep, blocking the main
+    /// thread (a beachball mid-capture, and a memory spike for large images).
+    private func populateImage(_ item: inout Item, data: Data, originalName: String? = nil) async {
         item.type = ItemType.image.rawValue
-        if let stored = try? assetStore.storeImageData(data) {
+        item.title = originalName ?? "Image"
+        let assetStore = self.assetStore
+        let result = await Task.detached(priority: .userInitiated) {
+            (stored: try? assetStore.storeImageData(data),
+             thumb: ThumbnailService.make(fromImageData: data))
+        }.value
+        if let stored = result.stored {
             item.assetPath = stored.relativePath
             item.uti = stored.uti
             item.byteSize = stored.byteSize
             item.fileName = originalName ?? stored.fileName
         }
-        if let thumb = ThumbnailService.make(fromImageData: data) {
+        if let thumb = result.thumb {
             item.thumbnail = thumb.data
             item.thumbWidth = thumb.width
             item.thumbHeight = thumb.height
         }
-        item.title = originalName ?? "Image"
     }
 
     // MARK: - Retrieval (vault-only: copy out / drag out)

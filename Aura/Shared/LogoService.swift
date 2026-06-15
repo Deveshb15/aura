@@ -23,23 +23,23 @@ actor LogoService {
     /// TLDs to probe for an unmapped app's domain, most-likely first.
     private static let probeTLDs = ["com", "ai", "io", "app", "co", "so"]
 
-    private let memory: NSCache<NSString, NSImage> = {
-        let c = NSCache<NSString, NSImage>(); c.countLimit = 500; return c
-    }()
+    /// Byte-bounded and memory-pressure-flushed (logos are small, but 500 of
+    /// them with no byte ceiling still added up on long-running sessions).
+    private let memory = BoundedImageCache(countLimit: 500, costLimitBytes: 24 * 1024 * 1024)
     private var inFlight: [String: Task<NSImage?, Never>] = [:]
 
     // MARK: - Web domain
 
     func logo(for domain: String) async -> NSImage? {
         let key = domain.lowercased()
-        if let cached = memory.object(forKey: key as NSString) { return cached }
+        if let cached = memory.object(forKey: key) { return cached }
         if let task = inFlight[key] { return await task.value }
 
         let task = Task<NSImage?, Never> { await self.resolve(domain: key) }
         inFlight[key] = task
         let image = await task.value
         inFlight[key] = nil
-        if let image { memory.setObject(image, forKey: key as NSString) }
+        if let image { memory.set(image, forKey: key, cost: image.approxDecodedBytes) }
         return image
     }
 
@@ -66,14 +66,14 @@ actor LogoService {
         let slug = Self.cacheSlug(rawName)
         guard !slug.isEmpty else { return nil }
         let key = "app:\(slug)"
-        if let cached = memory.object(forKey: key as NSString) { return cached }
+        if let cached = memory.object(forKey: key) { return cached }
         if let task = inFlight[key] { return await task.value }
 
         let task = Task<NSImage?, Never> { await self.resolveApp(rawName: rawName, slug: slug) }
         inFlight[key] = task
         let image = await task.value
         inFlight[key] = nil
-        if let image { memory.setObject(image, forKey: key as NSString) }
+        if let image { memory.set(image, forKey: key, cost: image.approxDecodedBytes) }
         return image
     }
 

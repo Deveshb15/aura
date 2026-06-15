@@ -6,7 +6,11 @@ import UniformTypeIdentifiers
 /// Copies captured originals (images, files) onto disk under
 /// `~/Library/Application Support/Aura/Assets/` and hands back a *relative*
 /// path that gets stored in the database.
-final class AssetStore {
+///
+/// `Sendable`: the only stored state is the immutable `baseURL`; every method is
+/// pure filesystem I/O. This lets the heavy disk writes run in `Task.detached`
+/// off the main actor (see `DataStore.populateImage`) without capture warnings.
+final class AssetStore: Sendable {
     let baseURL: URL
 
     struct Stored {

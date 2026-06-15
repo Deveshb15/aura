@@ -26,9 +26,13 @@ enum PasteboardReader {
         if let data = pasteboard.data(forType: .png) {
             return CaptureCandidate(payload: .image(data), sourceApp: sourceApp, sourceURL: sourceURL)
         }
-        if let tiff = pasteboard.data(forType: .tiff),
-           let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
-            return CaptureCandidate(payload: .image(png), sourceApp: sourceApp, sourceURL: sourceURL)
+        // Carry raw TIFF bytes as-is — do NOT re-encode to PNG here. The old
+        // `NSBitmapImageRep` decode+encode ran on the main-thread clipboard poll
+        // and could stall the UI for large screenshots. CGImageSource reads TIFF
+        // natively, so the thumbnail (save path) and the nudge preview both
+        // downsample it off the main thread.
+        if let tiff = pasteboard.data(forType: .tiff) {
+            return CaptureCandidate(payload: .image(tiff), sourceApp: sourceApp, sourceURL: sourceURL)
         }
 
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL], let url = urls.first {

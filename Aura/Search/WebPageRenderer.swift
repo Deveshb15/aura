@@ -106,9 +106,25 @@ private final class OffscreenPageLoader: NSObject, WKNavigationDelegate {
         guard let webView else { cont.resume(returning: nil); return }
         self.webView = nil
         webView.stopLoading()
+
+        // Guard the JS eval itself. A wedged WebContent process can leave the
+        // completion handler uncalled, which would strand this continuation —
+        // and, since renders are serialized through `WebPageRenderer`, every
+        // future render queued behind it. Whichever of the eval callback or this
+        // timeout fires first resumes; `resumed` makes it exactly once. Both run
+        // on the main thread, so the flag needs no locking.
+        var resumed = false
+        let resume: (String?) -> Void = { value in
+            if resumed { return }
+            resumed = true
+            cont.resume(returning: value)
+        }
+        let jsTimeout = DispatchWorkItem { resume(nil) }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0, execute: jsTimeout)
         webView.evaluateJavaScript("document.documentElement.outerHTML") { [webView] result, _ in
             _ = webView   // keep the web view alive until the JS callback lands
-            cont.resume(returning: result as? String)
+            jsTimeout.cancel()
+            resume(result as? String)
         }
     }
 }

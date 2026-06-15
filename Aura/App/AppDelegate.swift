@@ -16,6 +16,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         FontRegistrar.registerBundledFonts()
         NSApp.setActivationPolicy(.accessory)
 
+        // Stability: flush decoded-image caches the moment the OS reports memory
+        // pressure (keeps a low-RAM Mac out of swap thrash), and surface any
+        // main-thread hang in the log so it's diagnosable instead of invisible.
+        ImageCache.startMonitoringMemoryPressure()
+        MainThreadWatchdog.startIfEnabled()
+
         // Warm up the embedding model (and trigger its one-time asset download)
         // so the first search is semantic, not keyword-only.
         Task.detached(priority: .utility) { await EmbeddingService.shared.prepare() }

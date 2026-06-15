@@ -124,7 +124,7 @@ struct NotchMiniCard: View {
     @ViewBuilder private var content: some View {
         switch item.itemType {
         case .image:
-            if let data = item.thumbnail, let image = NSImage(data: data) {
+            if let data = item.thumbnail, let image = ThumbnailCache.image(id: item.id, data: data) {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
             } else {
                 centeredIcon("photo", caption: nil)
@@ -138,7 +138,7 @@ struct NotchMiniCard: View {
         case .color:
             Color(hex: item.colorHex ?? "") ?? Color.gray
         case .file:
-            if let data = item.thumbnail, let image = NSImage(data: data) {
+            if let data = item.thumbnail, let image = ThumbnailCache.image(id: item.id, data: data) {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
             } else {
                 centeredIcon("doc.fill", caption: item.fileName ?? "File")
