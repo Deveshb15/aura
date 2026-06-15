@@ -2,6 +2,7 @@ import Foundation
 import AppKit
 import Observation
 import GRDB
+import os
 
 /// The single source of truth shared by BOTH surfaces (the notch panel and the
 /// library window). Wraps a GRDB `DatabasePool`, publishes reactive item arrays
@@ -13,6 +14,8 @@ final class DataStore {
     private let dbPool: DatabasePool
     private let assetStore: AssetStore
     private let semanticIndex: SemanticIndex
+
+    private static let captureLog = Logger(subsystem: "app.captureaura", category: "capture")
 
     private(set) var libraryItems: [Item] = []
     private(set) var recentItems: [Item] = []
@@ -170,7 +173,10 @@ final class DataStore {
             item.title = hex
 
         case .image(let data):
-            await populateImage(&item, data: data)
+            guard await populateImage(&item, data: data) else {
+                Self.captureLog.error("save: image capture failed; not inserting a ghost row")
+                return
+            }
 
         case .file(let url):
             let isImage = AssetStore.isImageFile(url)
@@ -178,7 +184,10 @@ final class DataStore {
                 ? await Task.detached(priority: .userInitiated) { try? Data(contentsOf: url) }.value
                 : nil
             if let imageData {
-                await populateImage(&item, data: imageData, originalName: url.lastPathComponent)
+                guard await populateImage(&item, data: imageData, originalName: url.lastPathComponent) else {
+                    Self.captureLog.error("save: dropped image-file capture failed; not inserting a ghost row")
+                    return
+                }
             } else {
                 item.type = ItemType.file.rawValue
                 let assetStore = self.assetStore
@@ -597,25 +606,42 @@ final class DataStore {
     /// decode + JPEG re-encode and the disk write run OFF the main actor — they
     /// used to run synchronously here on every image keep, blocking the main
     /// thread (a beachball mid-capture, and a memory spike for large images).
-    private func populateImage(_ item: inout Item, data: Data, originalName: String? = nil) async {
+    /// Returns `true` if the original bytes were persisted to disk. A `false`
+    /// return means the asset write failed (bad/corrupt bytes, disk error) — the
+    /// caller must NOT insert the row, or the library gains a blank "ghost" image
+    /// (the count bumps with nothing to show).
+    @discardableResult
+    private func populateImage(_ item: inout Item, data: Data, originalName: String? = nil) async -> Bool {
         item.type = ItemType.image.rawValue
         item.title = originalName ?? "Image"
         let assetStore = self.assetStore
-        let result = await Task.detached(priority: .userInitiated) {
-            (stored: try? assetStore.storeImageData(data),
-             thumb: ThumbnailService.make(fromImageData: data))
+        let result: (stored: AssetStore.Stored?, thumb: ThumbnailService.Thumb?, error: Error?)
+        result = await Task.detached(priority: .userInitiated) {
+            let stored: AssetStore.Stored?
+            let error: Error?
+            do {
+                stored = try assetStore.storeImageData(data)
+                error = nil
+            } catch let err {
+                stored = nil
+                error = err
+            }
+            return (stored, ThumbnailService.make(fromImageData: data), error)
         }.value
         if let stored = result.stored {
             item.assetPath = stored.relativePath
             item.uti = stored.uti
             item.byteSize = stored.byteSize
             item.fileName = originalName ?? stored.fileName
+        } else {
+            Self.captureLog.error("save: storeImageData failed (\(data.count) bytes): \(String(describing: result.error), privacy: .public)")
         }
         if let thumb = result.thumb {
             item.thumbnail = thumb.data
             item.thumbWidth = thumb.width
             item.thumbHeight = thumb.height
         }
+        return result.stored != nil
     }
 
     // MARK: - Retrieval (vault-only: copy out / drag out)
