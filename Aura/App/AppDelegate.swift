@@ -63,10 +63,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // first run the notch reveal and clipboard capture are deferred until
         // onboarding finishes, so nothing nudges out over the welcome window.
         if UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
+            autoEnableLaunchAtLoginForExistingUsersIfNeeded()
             activateAppIfNeeded()
         } else {
             presentOnboarding()
         }
+    }
+
+    /// Existing users onboarded before launch-at-login was offered never made a
+    /// choice — so enable it once, matching the new opt-out default, so the app
+    /// returns after a restart. Gated by `configuredDefaultsKey` (also set when
+    /// onboarding finishes), so a brand-new user who opts out is never overridden,
+    /// and a user who later disables it in Settings stays disabled.
+    private func autoEnableLaunchAtLoginForExistingUsersIfNeeded() {
+        guard !UserDefaults.standard.bool(forKey: LaunchAtLogin.configuredDefaultsKey)
+        else { return }
+        UserDefaults.standard.set(true, forKey: LaunchAtLogin.configuredDefaultsKey)
+        if LaunchAtLogin.status != .enabled { LaunchAtLogin.setEnabled(true) }
+        UserDefaults.standard.set(LaunchAtLogin.isEnabled,
+                                  forKey: LaunchAtLogin.enabledDefaultsKey)
     }
 
     /// New Note routing: compose in the Library window when it's the key window

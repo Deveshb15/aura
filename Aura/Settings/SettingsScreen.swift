@@ -25,6 +25,9 @@ struct SettingsScreen: View {
     @State private var importError: String?
     @State private var showingExportHelp = false
     @State private var showingExportInfo = false
+    /// True when macOS has the login item registered but pending the user's
+    /// approval in System Settings — it won't actually launch until approved.
+    @State private var launchAtLoginNeedsApproval = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -109,6 +112,17 @@ struct SettingsScreen: View {
                     .toggleStyle(.aura)
                     .padding(.vertical, 13)
                     .onChange(of: launchAtLogin) { _, isOn in setLaunchAtLogin(isOn) }
+            }
+            if launchAtLoginNeedsApproval {
+                HStack(spacing: 8) {
+                    footnote("Approve Carpet in System Settings → General → Login Items so it can start at login.",
+                             color: AuraTheme.textSecondary)
+                    Spacer(minLength: 8)
+                    Button("Open Login Items") {
+                        LaunchAtLogin.openSystemSettingsLoginItems()
+                    }
+                    .buttonStyle(AuraSecondaryButtonStyle(compact: true))
+                }
             }
         }
     }
@@ -480,18 +494,14 @@ struct SettingsScreen: View {
 
     /// Reflect the actual login-item state (it can change outside the app).
     private func syncLaunchAtLogin() {
-        launchAtLogin = (SMAppService.mainApp.status == .enabled)
+        launchAtLogin = LaunchAtLogin.isEnabled
+        launchAtLoginNeedsApproval = (LaunchAtLogin.status == .requiresApproval)
     }
 
     private func setLaunchAtLogin(_ isOn: Bool) {
-        do {
-            if isOn {
-                try SMAppService.mainApp.register()
-            } else {
-                try SMAppService.mainApp.unregister()
-            }
-        } catch {
-            NSLog("Aura: launch-at-login toggle failed: \(error)")
-        }
+        LaunchAtLogin.setEnabled(isOn)
+        // Re-read the system's view: a register() can land on `.requiresApproval`
+        // rather than `.enabled`, in which case we surface the approval hint.
+        launchAtLoginNeedsApproval = (LaunchAtLogin.status == .requiresApproval)
     }
 }
