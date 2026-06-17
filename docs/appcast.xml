@@ -3,6 +3,20 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>2.2.1</title>
+            <pubDate>Wed, 17 Jun 2026 22:41:11 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>19</sparkle:version>
+            <sparkle:shortVersionString>2.2.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Dropped images from the web now stick</h2>
+<ul>
+  <li><b>Web image drops are fixed.</b> Dragging a picture straight out of Safari, Chrome, or another browser onto the notch now reliably saves the image itself — instead of quietly doing nothing, or filing away the page link in its place.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.1/Carpet-2.2.1.dmg" length="17890126" type="application/octet-stream" sparkle:edSignature="FwhA0wuZfXnidsHqpGcRuIQ/jjDa1Bf+hbmDnQHKctZV+3ouBCgdvyynTYRmV6AooIhAtZhbbSOyc//nuSauBg=="/>
+        </item>
+        <item>
             <title>2.2.0</title>
             <pubDate>Mon, 15 Jun 2026 15:14:24 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -62,19 +76,6 @@
 <p>The installer now greets you with Carpet's blue-sky look — clouds and all — to match the app. No functional changes; just a nicer first impression.</p>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.0.1/Carpet-2.0.1.dmg" length="16820052" type="application/octet-stream" sparkle:edSignature="ZUGNjJhVXOeHVBZsqbVlLOzXksSYwAOI+0z0CRuGhDVTwxBE42rz55IMUi/tLcAFc7Sd89OrefJb060cdPpJBw=="/>
-        </item>
-        <item>
-            <title>2.0.0</title>
-            <pubDate>Sat, 13 Jun 2026 19:22:11 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>14</sparkle:version>
-            <sparkle:shortVersionString>2.0.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>Say hello to Carpet</h2>
-<p>Aura is now <strong>Carpet</strong> — same quiet little vault that lives in your notch, with a fresh name, a new app icon, and a new wordmark at the top of the library.</p>
-<p>Nothing moves: all of your saved items, settings, and reminders are exactly where you left them. This update just changes the look and the name.</p>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.0.0/Carpet-2.0.0.dmg" length="16212434" type="application/octet-stream" sparkle:edSignature="/dtpHz5i2Dsqs+WfaRGH6Vf1nluDruSpVqVApvT2NQ8uGwYejJmhTil9321Ig990raR19SpsKvlY62nKY0ShBw=="/>
         </item>
     </channel>
 </rss>
