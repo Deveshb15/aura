@@ -25,6 +25,7 @@ struct SettingsScreen: View {
     @State private var importError: String?
     @State private var showingExportHelp = false
     @State private var showingExportInfo = false
+    @State private var showingXHelp = false
     /// True when macOS has the login item registered but pending the user's
     /// approval in System Settings — it won't actually launch until approved.
     @State private var launchAtLoginNeedsApproval = false
@@ -205,13 +206,24 @@ struct SettingsScreen: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
                         rowLabel("X bookmarks")
-                        Text("Sync your X bookmarks into Carpet")
+                        Button { showingXHelp.toggle() } label: {
+                            HStack(spacing: 3) {
+                                Text("How does this work?")
+                                Image(systemName: "chevron.down")
+                                    .font(.system(size: 8, weight: .semibold))
+                            }
                             .font(.system(size: 11.5))
                             .foregroundStyle(AuraTheme.textTertiary)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showingXHelp, arrowEdge: .bottom) {
+                            xHelpPopover
+                        }
                     }
                     Spacer()
-                    Button("Get the extension") {
-                        NSWorkspace.shared.open(Self.extensionURL)
+                    Button(action: startXBookmarkImport) {
+                        Text("Import my bookmarks…")
                     }
                     .buttonStyle(AuraSecondaryButtonStyle(compact: true))
                 }
@@ -320,6 +332,84 @@ struct SettingsScreen: View {
 
     /// The Carpet — X Bookmark Sync browser extension on the Chrome Web Store.
     private static let extensionURL = URL(string: "https://chromewebstore.google.com/detail/carpet-%E2%80%94-x-bookmark-sync/okblnhfjfpfjmljaagmebbmhkcgmmgli")!
+
+    /// How the X bookmark sync works + how to set up the companion extension.
+    private var xHelpPopover: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Sync your X bookmarks")
+                .font(AuraFont.serif(16, .medium))
+                .foregroundStyle(AuraTheme.textPrimary)
+
+            VStack(alignment: .leading, spacing: 9) {
+                xStep("1", "Get the extension") {
+                    Button {
+                        NSWorkspace.shared.open(Self.extensionURL)
+                    } label: {
+                        HStack(spacing: 3) {
+                            Text("Install Carpet — X Bookmark Sync from the Chrome Web Store")
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 9, weight: .semibold))
+                        }
+                        .font(.system(size: 12))
+                        .foregroundStyle(AuraTheme.accentDot)
+                        .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .buttonStyle(.plain)
+                    .onHover { inside in
+                        if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() }
+                    }
+                    .help("Open the Carpet extension on the Chrome Web Store")
+                }
+                xStep("2", "Bookmark on X like normal",
+                      "While you’re on x.com, anything you bookmark is saved to Carpet automatically — author, text and image included. Keep Carpet running.")
+                xStep("3", "Bring in your history",
+                      "“Import my bookmarks” opens your X bookmarks and pulls in up to 400 existing ones as it scrolls.")
+            }
+
+            Text("Carpet only reads your bookmarks page’s own data while you’re on X — no passwords, no background access, nothing leaves your Mac.")
+                .font(.system(size: 11))
+                .foregroundStyle(AuraTheme.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(18)
+        .frame(width: 340, alignment: .leading)
+        .background(AuraTheme.background)
+    }
+
+    /// One numbered step with plain-text detail (steps 2–3).
+    private func xStep(_ number: String, _ title: String, _ detail: String) -> some View {
+        xStep(number, title) {
+            Text(detail)
+                .font(.system(size: 12))
+                .foregroundStyle(AuraTheme.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// One numbered step with a custom detail view (step 1 hosts a store link).
+    private func xStep<Detail: View>(_ number: String, _ title: String,
+                                     @ViewBuilder detail: () -> Detail) -> some View {
+        HStack(alignment: .top, spacing: 9) {
+            Text(number)
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(AuraTheme.textSecondary)
+                .frame(width: 16, height: 16)
+                .background(Circle().fill(AuraTheme.hairline))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(AuraTheme.textPrimary)
+                detail()
+            }
+        }
+    }
+
+    /// Opens the user's X bookmarks with the import trigger so the extension's
+    /// watcher starts a one-time, capped harvest (auto-scroll → up to 400).
+    private func startXBookmarkImport() {
+        guard let url = URL(string: "https://x.com/i/bookmarks?aura_import=1") else { return }
+        NSWorkspace.shared.open(url)
+    }
 
     // MARK: - Export (system save panel is the only native UI)
 
