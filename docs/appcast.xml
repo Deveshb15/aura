@@ -3,6 +3,20 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>2.2.3</title>
+            <pubDate>Thu, 18 Jun 2026 15:30:50 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>21</sparkle:version>
+            <sparkle:shortVersionString>2.2.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Import your X bookmarks, properly</h2>
+<ul>
+  <li><b>X bookmark setup is back.</b> Settings → Data now walks you through it: a <b>How does this work?</b> guide (get the extension → bookmark on X → import your history) and an <b>Import my bookmarks…</b> button that pulls in up to 400 of your existing X bookmarks.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.3/Carpet-2.2.3.dmg" length="17924281" type="application/octet-stream" sparkle:edSignature="3Gh/3RxP6fa5h8kDUbB9vEEdy4gtwr1RZGuBUkVEwQuIJJC9JHP09cNdkqVk9luFn4kY3UFdpcNwHuhlJbH1CA=="/>
+        </item>
+        <item>
             <title>2.2.2</title>
             <pubDate>Thu, 18 Jun 2026 10:03:56 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -61,23 +75,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.1.1/Carpet-2.1.1.dmg" length="17832892" type="application/octet-stream" sparkle:edSignature="j0WmksWLN/XqBgNCzcyPqZBespMQs3DdfL1pU0VpFaeZLa+1OUyCtT7Vwa3gzc/qvprT7yjFu5Fli9NuxqajCA=="/>
-        </item>
-        <item>
-            <title>2.1.0</title>
-            <pubDate>Sun, 14 Jun 2026 20:41:28 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>16</sparkle:version>
-            <sparkle:shortVersionString>2.1.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>Notes, and a fresh welcome</h2>
-<ul>
-  <li><b>New Notes category.</b> Quick notes you write in Carpet — from the notch (⌃⌘N) or the library — now have their own tab, separate from clipboard captures.</li>
-  <li><b>Redesigned onboarding.</b> The welcome and how-to screens now wear Carpet's blue-sky look, with all-new notch illustrations for copy, library, quick notes, and drag-to-save.</li>
-  <li><b>Reminders removed.</b> The "remind me…" feature is gone — Carpet stays focused on capturing and finding your stuff.</li>
-  <li><b>Settings tidy-up.</b> X bookmark sync is marked "Coming soon" until the browser extension ships, and there's a quick way to reach out for help.</li>
-</ul>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.1.0/Carpet-2.1.0.dmg" length="16552946" type="application/octet-stream" sparkle:edSignature="P3qjFI3+CDILtFx5SbRxQ8EHweQCwimGabMjNKLgzWEBwaHLA1xlTq3k1ps8bBtqPfk/Pa1/YvIVuOPX6VMXCQ=="/>
         </item>
     </channel>
 </rss>
