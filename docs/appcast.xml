@@ -3,6 +3,20 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>2.2.2</title>
+            <pubDate>Thu, 18 Jun 2026 10:03:56 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>20</sparkle:version>
+            <sparkle:shortVersionString>2.2.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>X bookmark sync is here</h2>
+<ul>
+  <li><b>The browser extension is live.</b> Carpet — X Bookmark Sync is now on the Chrome Web Store. Settings → Data has a new <b>Get the extension</b> button to install it and start syncing your X bookmarks straight into Carpet.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.2/Carpet-2.2.2.dmg" length="17885577" type="application/octet-stream" sparkle:edSignature="gGmcKw5jyoJ9+IkrTRkWDyTRKMAS7wK/ZW26tZqh0vVvejCsfTQXMTiXqp5jhNBkfpBW9UZninpOoXBX3Y1DCw=="/>
+        </item>
+        <item>
             <title>2.2.1</title>
             <pubDate>Wed, 17 Jun 2026 22:41:11 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -64,18 +78,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.1.0/Carpet-2.1.0.dmg" length="16552946" type="application/octet-stream" sparkle:edSignature="P3qjFI3+CDILtFx5SbRxQ8EHweQCwimGabMjNKLgzWEBwaHLA1xlTq3k1ps8bBtqPfk/Pa1/YvIVuOPX6VMXCQ=="/>
-        </item>
-        <item>
-            <title>2.0.1</title>
-            <pubDate>Sat, 13 Jun 2026 19:58:47 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>15</sparkle:version>
-            <sparkle:shortVersionString>2.0.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>A prettier welcome</h2>
-<p>The installer now greets you with Carpet's blue-sky look — clouds and all — to match the app. No functional changes; just a nicer first impression.</p>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.0.1/Carpet-2.0.1.dmg" length="16820052" type="application/octet-stream" sparkle:edSignature="ZUGNjJhVXOeHVBZsqbVlLOzXksSYwAOI+0z0CRuGhDVTwxBE42rz55IMUi/tLcAFc7Sd89OrefJb060cdPpJBw=="/>
         </item>
     </channel>
 </rss>
