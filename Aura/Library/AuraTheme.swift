@@ -34,7 +34,7 @@ enum AuraTheme {
     static let hairlineStrong  = blend(dark: (.white, 0.10), light: (.black, 0.12))
     /// Faint fill for chips / mini-card tiles / off-state toggle tracks.
     static let fill            = blend(dark: (.white, 0.08), light: (.black, 0.05))
-    /// Even fainter fill (e.g. inert "Coming soon" pill, inputs).
+    /// Even fainter fill (e.g. inert pills, inputs).
     static let fillSubtle      = blend(dark: (.white, 0.05), light: (.black, 0.035))
     /// Drop shadow under cards / toasts — much softer in light mode.
     static let shadow          = blend(dark: (.black, 0.35), light: (.black, 0.12))

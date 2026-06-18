@@ -210,10 +210,12 @@ struct SettingsScreen: View {
                             .foregroundStyle(AuraTheme.textTertiary)
                     }
                     Spacer()
-                    comingSoonBadge
+                    Button("Get the extension") {
+                        NSWorkspace.shared.open(Self.extensionURL)
+                    }
+                    .buttonStyle(AuraSecondaryButtonStyle(compact: true))
                 }
                 .padding(.vertical, 10)
-                .opacity(0.6)
                 rowDivider
                 clearRow
             }
@@ -316,16 +318,8 @@ struct SettingsScreen: View {
         Rectangle().fill(AuraTheme.hairline).frame(height: 1)
     }
 
-    /// A muted, non-interactive "Coming soon" pill for features not yet live.
-    private var comingSoonBadge: some View {
-        Text("Coming soon")
-            .font(.system(size: 12, weight: .medium))
-            .foregroundStyle(AuraTheme.textSecondary)
-            .padding(.horizontal, 11)
-            .padding(.vertical, 6)
-            .background(Capsule().fill(AuraTheme.fillSubtle))
-            .overlay(Capsule().strokeBorder(AuraTheme.hairline))
-    }
+    /// The Carpet — X Bookmark Sync browser extension on the Chrome Web Store.
+    private static let extensionURL = URL(string: "https://chromewebstore.google.com/detail/carpet-%E2%80%94-x-bookmark-sync/okblnhfjfpfjmljaagmebbmhkcgmmgli")!
 
     // MARK: - Export (system save panel is the only native UI)
 
