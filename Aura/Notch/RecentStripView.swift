@@ -6,6 +6,7 @@ struct NotchExpandedView: View {
     let dataStore: DataStore
     let isDropTargeted: Bool
     let onAddNote: () -> Void
+    let onOpenLibrary: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -32,7 +33,27 @@ struct NotchExpandedView: View {
                     .padding(.bottom, 2)
                 }
             }
+
+            openAppButton
         }
+    }
+
+    /// Brings the full library window forward — an explicit affordance alongside
+    /// the implicit "click the notch chrome to open" gesture.
+    private var openAppButton: some View {
+        Button(action: onOpenLibrary) {
+            HStack(spacing: 3) {
+                Image(systemName: "arrow.up.forward.app").font(.system(size: 10, weight: .semibold))
+                Text("Open App").font(.system(size: 10.5, weight: .semibold))
+            }
+            .foregroundStyle(AuraTheme.textSecondary)
+            .padding(.horizontal, 9)
+            .padding(.vertical, 4)
+            .background(AuraTheme.fill, in: Capsule())
+            .overlay(Capsule().strokeBorder(AuraTheme.hairline))
+        }
+        .buttonStyle(.plain)
+        .help("Open the Carpet library window")
     }
 
     /// Opens the quick-note composer (same surface as the ⌃⌘N hotkey).

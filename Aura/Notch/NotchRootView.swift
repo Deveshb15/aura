@@ -84,7 +84,8 @@ struct NotchRootView: View {
             } else if state.mode == .expanded {
                 NotchExpandedView(dataStore: dataStore,
                                   isDropTargeted: state.isDropTargeted,
-                                  onAddNote: onAddNote)
+                                  onAddNote: onAddNote,
+                                  onOpenLibrary: onOpenLibrary)
                     .padding(.horizontal, 14)
                     .padding(.top, 8)
                     .padding(.bottom, 12)
