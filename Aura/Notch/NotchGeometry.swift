@@ -43,6 +43,28 @@ struct NotchGeometry {
         guard let screen = notchedScreen() ?? NSScreen.main ?? NSScreen.screens.first ?? lastScreen else {
             return nil
         }
+        return make(for: screen)
+    }
+
+    /// Geometry for the display the cursor is currently on, so the notch can
+    /// follow the active screen. On a screen without a physical notch this
+    /// produces the same top-center "pill" fallback used in clamshell mode —
+    /// i.e. a faked notch on external monitors. `NSEvent.mouseLocation` and
+    /// `NSScreen.frame` share the global bottom-left-origin space, so
+    /// `frame.contains` is correct even for negatively-positioned externals.
+    static func forActiveScreen() -> NotchGeometry? {
+        let cursor = NSEvent.mouseLocation
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(cursor) })
+                ?? NSScreen.main ?? lastScreen else {
+            return nil
+        }
+        return make(for: screen)
+    }
+
+    /// Builds geometry for a specific screen: a real notch (from `safeAreaInsets`
+    /// / auxiliary areas) when the display has one, or a 180×32 top-center pill
+    /// fallback when it doesn't.
+    private static func make(for screen: NSScreen) -> NotchGeometry {
         lastScreen = screen
         let topInset = screen.safeAreaInsets.top
         let hasNotch = topInset > 0

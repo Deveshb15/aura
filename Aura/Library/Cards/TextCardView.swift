@@ -96,7 +96,10 @@ struct TextCardView: View {
         let new = draftText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if sessionIsDraft {
-            composeLauncher.draft = nil
+            // If a *different* draft is already active, this card was handed off
+            // (e.g. "New note" opened a fresh draft) — save our text but leave
+            // the new draft alone instead of clearing it.
+            if composeLauncher.draft?.id == item.id { composeLauncher.draft = nil }
             guard !new.isEmpty else { return }   // wrote nothing → vanish
             Task { await store.saveNote(text: new, sourceApp: "Carpet") }
             return

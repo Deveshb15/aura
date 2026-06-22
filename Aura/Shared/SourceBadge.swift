@@ -55,15 +55,30 @@ struct SourceBadge: View {
     var body: some View {
         if let name = item.sourceName {
             HStack(spacing: 5) {
-                AsyncLogo(domain: item.sourceDomain,
-                          appName: item.sourceApp,
-                          fallbackFavicon: faviconURL,
-                          fallbackSymbol: item.typeSymbol,
-                          size: 14)
+                logo
                 Text(name)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
+        }
+    }
+
+    /// Our own captures ("Carpet" / "Carpet Quick Note") use the bundled logo
+    /// mark directly — resolving them through LogoService would probe logo.dev
+    /// and surface an unrelated brand. Everything else resolves async as usual.
+    @ViewBuilder private var logo: some View {
+        if let app = item.sourceApp, Item.noteSourceApps.contains(app) {
+            Image("CarpetLogo")
+                .resizable().interpolation(.high)
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 14, height: 14)
+                .clipShape(RoundedRectangle(cornerRadius: 14 * 0.25, style: .continuous))
+        } else {
+            AsyncLogo(domain: item.sourceDomain,
+                      appName: item.sourceApp,
+                      fallbackFavicon: faviconURL,
+                      fallbackSymbol: item.typeSymbol,
+                      size: 14)
         }
     }
 }

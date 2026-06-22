@@ -114,7 +114,7 @@ struct LibraryWindowView: View {
                 .padding(.horizontal, 40)
                 .padding(.bottom, showAnswer ? 16 : 26)
             answerBanner
-            ContentTypeTabBar(selection: $selectedTab)
+            ContentTypeTabBar(selection: $selectedTab, counts: tabCounts)
                 .padding(.horizontal, 40)
                 .padding(.bottom, 18)
             content
@@ -297,12 +297,11 @@ struct LibraryWindowView: View {
 
     /// Starts an inline note draft: a transient, unsaved `.text` item shown as a
     /// focused card at the top of the grid. Saved on non-empty blur, discarded
-    /// when left empty. If a draft is already open, just re-focus it.
+    /// when left empty. Always opens a *fresh* draft — if one is already open,
+    /// swapping it out tears down its card, which commits it (saves non-empty /
+    /// discards empty) as it loses focus, so "New note" while writing saves the
+    /// current note first.
     private func startDraft() {
-        if let existing = composeLauncher.draft {
-            composeLauncher.autofocusItemID = existing.id
-            return
-        }
         var draft = Item(type: .text)
         draft.sourceApp = "Carpet"
         draft.textContent = ""
@@ -330,6 +329,13 @@ struct LibraryWindowView: View {
 
     private var isSearching: Bool {
         !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    /// Counts shown on the tab bar, over the same base set the tabs filter
+    /// (search results while searching, otherwise the library), so each badge
+    /// reflects what selecting that tab would show.
+    private var tabCounts: [ContentTab: Int] {
+        ContentTab.counts(for: isSearching ? searchResults : store.libraryItems)
     }
 
     private var filteredItems: [Item] {

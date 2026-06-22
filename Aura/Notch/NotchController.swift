@@ -126,12 +126,24 @@ final class NotchController {
         // Keep the last good geometry if the displays momentarily report empty
         // (mid-reconfiguration) rather than crashing or blanking the notch.
         guard let updated = NotchGeometry.current() else { return }
+        // Move the panel onto the (possibly new) notched/main screen. Falls back
+        // to the top-center pill when no notched screen is present (e.g. clamshell
+        // on an external).
+        relocate(to: updated)
+    }
+
+    /// Moves the single panel onto `updated`'s screen and re-syncs the dependent
+    /// state (collapsed size + hit-test rect). Shared by display reconfiguration
+    /// and the follow-the-cursor logic. Only ever called while the notch is in a
+    /// safe state to move (see callers); the interactive rect is recomputed for
+    /// whatever mode is currently live so an open panel relocates intact.
+    private func relocate(to updated: NotchGeometry) {
         geometry = updated
-        // Move the panel onto the (possibly new) notched/main screen and ensure
-        // it's still on top after relocating. Falls back to the top-center pill
-        // when no notched screen is present (e.g. clamshell on an external).
         panel?.setFrame(geometry.windowFrame, display: true)
         panel?.orderFrontRegardless()
+        // Re-ordering can drop the forced dark appearance; pin it again so the
+        // notch stays dark on the new screen.
+        forceDarkAppearance()
         state.collapsedSize = geometry.collapsedSize
         let mode: NotchInteractiveMode = state.pending != nil ? .nudge
             : state.mode == .expanded ? .expanded
@@ -157,6 +169,18 @@ final class NotchController {
         // While composing, hover-based expand/collapse is suspended.
         guard state.mode != .compose else { return }
         let location = NSEvent.mouseLocation
+        // Follow the active display: when idle, keep the collapsed notch on the
+        // screen the cursor is on (faked top-center pill on non-notch externals).
+        // Gated to collapsed + no pending card so an open / animating panel is
+        // never yanked to another screen. The frame.contains early-out keeps the
+        // common "cursor already on this screen" case O(1), so a relocate fires
+        // only once per display crossing.
+        if state.mode == .collapsed, state.pending == nil,
+           !geometry.screen.frame.contains(location),
+           let updated = NotchGeometry.forActiveScreen(),
+           updated.screen.frame != geometry.screen.frame {
+            relocate(to: updated)
+        }
         // While a keep card is up, hovering it pauses the auto-dismiss; leaving
         // restarts the countdown. No hover-to-expand until the card is gone.
         if state.pending != nil {
@@ -337,6 +361,14 @@ final class NotchController {
         }
         cancelExpand()
         cancelCollapse()
+
+        // Open the composer on the display the cursor is on (faked pill screen
+        // included), so ⌃⌘N appears where the user is looking. Idle-only, so this
+        // never moves an already-open notch.
+        if state.mode == .collapsed, state.pending == nil,
+           let updated = NotchGeometry.forActiveScreen() {
+            relocate(to: updated)
+        }
 
         state.composeText = ""
         state.showComposeContent = false

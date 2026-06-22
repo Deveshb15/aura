@@ -69,7 +69,7 @@ struct CardView: View {
                         store.open(item)
                     }
                 }
-                CardActionButton(systemName: "xmark", help: "Delete", destructive: true) { delete() }
+                CardActionButton(systemName: "xmark", help: "Delete") { delete() }
             }
             .padding(8)
             .transition(.opacity)
@@ -143,14 +143,13 @@ private extension View {
 struct CardActionButton: View {
     let systemName: String
     let help: String
-    var destructive: Bool = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(destructive ? AuraTheme.destructive : Color.white)
+                .foregroundStyle(Color.white)
                 .frame(width: 24, height: 24)
                 .background(Color.black.opacity(0.55), in: Circle())
                 .overlay(Circle().strokeBorder(Color.white.opacity(0.12)))

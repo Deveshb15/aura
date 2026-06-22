@@ -59,6 +59,19 @@ enum ContentTab: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Per-tab item counts over a set, computed in a single pass. `.all` maps to
+    /// the total; every other tab to how many items fall under it. An item can
+    /// count toward more than one tab (e.g. a note that embeds a link).
+    static func counts(for items: [Item]) -> [ContentTab: Int] {
+        var counts: [ContentTab: Int] = [.all: items.count]
+        for item in items {
+            for tab in tabs(for: item) {
+                counts[tab, default: 0] += 1
+            }
+        }
+        return counts
+    }
+
     private static func linkTab(forHost host: String) -> ContentTab {
         if host.contains("youtube.") || host == "youtu.be" || host.contains("vimeo.") {
             return .videos
@@ -80,6 +93,9 @@ enum ContentTab: String, CaseIterable, Identifiable {
 /// text; inactive tabs = no background, muted text — exactly as in the mockup.
 struct ContentTypeTabBar: View {
     @Binding var selection: ContentTab
+    /// Per-tab item counts shown as a muted badge after each label. Tabs with a
+    /// zero count render without a badge. See `ContentTab.counts(for:)`.
+    var counts: [ContentTab: Int] = [:]
 
     var body: some View {
         HStack(spacing: 6) {
@@ -92,6 +108,7 @@ struct ContentTypeTabBar: View {
 
     private func pill(_ tab: ContentTab) -> some View {
         let isSelected = selection == tab
+        let count = counts[tab] ?? 0
         return Button {
             selection = tab
         } label: {
@@ -101,6 +118,14 @@ struct ContentTypeTabBar: View {
                     .imageScale(.medium)
                 Text(tab.label)
                     .font(.system(size: 14, weight: .medium))
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.system(size: 12, weight: .semibold))
+                        .monospacedDigit()
+                        .foregroundStyle(isSelected
+                            ? AuraTheme.activePillLabel.opacity(0.5)
+                            : AuraTheme.textTertiary)
+                }
             }
             .foregroundStyle(isSelected ? AuraTheme.activePillLabel : AuraTheme.textSecondary)
             .padding(.horizontal, 14)
