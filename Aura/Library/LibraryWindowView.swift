@@ -52,12 +52,23 @@ struct LibraryWindowView: View {
                     .padding(.trailing, 20)
             }
         }
+        // The live search field, anchored as a floating pill at the bottom-center.
+        // Hidden while Settings is up (search isn't relevant there), mirroring the
+        // header buttons' gating.
+        .overlay(alignment: .bottom) {
+            if !settings.isPresented {
+                searchBar
+                    .padding(.bottom, 26)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
         // Transient confirmation banner (e.g. after a bookmark import), floated
-        // above whatever surface is showing — library or the Settings overlay.
+        // above whatever surface is showing — library or the Settings overlay. Sits
+        // above the search pill when the library is up, at the edge otherwise.
         .overlay(alignment: .bottom) {
             if let toast = toasts.current {
                 ToastView(toast: toast) { toasts.dismiss() }
-                    .padding(.bottom, 30)
+                    .padding(.bottom, settings.isPresented ? 30 : 92)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -104,15 +115,13 @@ struct LibraryWindowView: View {
 
     // MARK: - Library
 
-    /// The library surface: wordmark, search hero, answer, tabs, and grid.
+    /// The library surface: wordmark, answer, tabs, and grid. Search now lives in
+    /// the floating pill anchored at the bottom (see `searchBar`).
     private var libraryStack: some View {
         VStack(spacing: 0) {
             wordmark
                 .padding(.top, 26)
-                .padding(.bottom, 52)
-            searchHero
-                .padding(.horizontal, 40)
-                .padding(.bottom, showAnswer ? 16 : 26)
+                .padding(.bottom, 28)
             answerBanner
             ContentTypeTabBar(selection: $selectedTab, counts: tabCounts)
                 .padding(.horizontal, 40)
@@ -187,25 +196,47 @@ struct LibraryWindowView: View {
         .help("Settings")
     }
 
-    // The hero IS the search field, always live: the pink caret is always
-    // present and "Ask your Memory…" shows behind it whenever the query is empty.
-    @ViewBuilder private var searchHero: some View {
-        ZStack(alignment: .leading) {
-            if query.isEmpty {
-                Text("Ask your Memory…")
-                    .foregroundStyle(AuraTheme.textSecondary)
-                    .allowsHitTesting(false)
+    // The search field, always live, now a floating pill anchored at the window's
+    // bottom edge. The pink caret is always present and "Ask your Memory…" shows
+    // behind it whenever the query is empty. Typing live-filters the grid; Return
+    // streams an AI answer (see `askMemory`).
+    @ViewBuilder private var searchBar: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(AuraTheme.textSecondary)
+            ZStack(alignment: .leading) {
+                if query.isEmpty {
+                    Text("Ask your Memory…")
+                        .foregroundStyle(AuraTheme.textSecondary)
+                        .allowsHitTesting(false)
+                }
+                TextField("", text: $query)
+                    .textFieldStyle(.plain)
+                    .foregroundStyle(AuraTheme.textPrimary)
+                    .tint(AuraTheme.accentDot)   // pink caret
+                    .focused($searchFocused)
+                    .onSubmit { askMemory() }
             }
-            TextField("", text: $query)
-                .textFieldStyle(.plain)
-                .foregroundStyle(AuraTheme.textPrimary)
-                .tint(AuraTheme.accentDot)   // pink caret
-                .focused($searchFocused)
-                .onSubmit { askMemory() }
+            .font(.system(size: 15))
+            .lineLimit(1)
+            if !query.isEmpty {
+                Button { query = ""; searchFocused = true } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14))
+                        .foregroundStyle(AuraTheme.textTertiary)
+                }
+                .buttonStyle(.plain)
+                .help("Clear")
+            }
         }
-        .font(AuraFont.serif(60, .regular, .tall))
-        .lineLimit(1)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 18)
+        .padding(.vertical, 13)
+        .frame(maxWidth: 560)
+        .background(Capsule().fill(AuraTheme.surface))
+        .overlay(Capsule().strokeBorder(AuraTheme.hairline))
+        .shadow(color: AuraTheme.shadow, radius: 20, y: 8)
+        .padding(.horizontal, 40)
         .onAppear { searchFocused = true }
     }
 
@@ -286,7 +317,7 @@ struct LibraryWindowView: View {
         if filteredItems.isEmpty, composeLauncher.draft == nil {
             emptyState
         } else {
-            BentoGridView(items: filteredItems)
+            BentoGridView(items: filteredItems, bottomInset: 100)
         }
     }
 

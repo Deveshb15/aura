@@ -8,6 +8,9 @@ import SwiftUI
 /// canvas shows through.
 struct BentoGridView: View {
     let items: [Item]
+    /// Extra bottom padding inside the scroll content so the last row can scroll
+    /// clear of the floating search pill anchored at the window's bottom edge.
+    var bottomInset: CGFloat = 28
 
     @Environment(InAppComposeLauncher.self) private var composeLauncher
     @State private var assigner = ColumnAssigner()
@@ -51,7 +54,7 @@ struct BentoGridView: View {
                 }
                 .padding(.horizontal, outer)
                 .padding(.top, 4)
-                .padding(.bottom, 28)
+                .padding(.bottom, bottomInset)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
