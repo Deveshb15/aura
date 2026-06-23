@@ -10,6 +10,7 @@ import UniformTypeIdentifiers
 struct SettingsScreen: View {
     @Environment(DataStore.self) private var store
     @Environment(ToastCenter.self) private var toasts
+    @Environment(LicenseManager.self) private var license
     /// Returns to the library (the gear/back arrow owns the actual dismissal).
     var onBack: () -> Void
 
@@ -29,6 +30,8 @@ struct SettingsScreen: View {
     /// True when macOS has the login item registered but pending the user's
     /// approval in System Settings — it won't actually launch until approved.
     @State private var launchAtLoginNeedsApproval = false
+    @State private var confirmingDeactivate = false
+    @State private var isDeactivating = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -37,6 +40,7 @@ struct SettingsScreen: View {
                 VStack(alignment: .leading, spacing: 28) {
                     captureSection
                     generalSection
+                    licenseSection
                     dataSection
                     HelpFooter()
                         .frame(maxWidth: .infinity)
@@ -125,6 +129,139 @@ struct SettingsScreen: View {
                     .buttonStyle(AuraSecondaryButtonStyle(compact: true))
                 }
             }
+        }
+    }
+
+    // MARK: - License
+
+    private var licenseSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            sectionHeader("License")
+            card {
+                HStack {
+                    rowLabel("Status")
+                    Spacer()
+                    licenseStatusBadge
+                }
+                .padding(.vertical, 13)
+                if let masked = license.maskedKey {
+                    rowDivider
+                    HStack {
+                        rowLabel("License key")
+                        Spacer()
+                        Text(masked)
+                            .font(.system(size: 13, design: .monospaced))
+                            .foregroundStyle(AuraTheme.textSecondary)
+                    }
+                    .padding(.vertical, 13)
+                }
+                if let last = license.lastValidatedAt {
+                    rowDivider
+                    HStack {
+                        rowLabel("Last checked")
+                        Spacer()
+                        Text(RelativeTime.medium(last))
+                            .font(.system(size: 14))
+                            .foregroundStyle(AuraTheme.textSecondary)
+                    }
+                    .padding(.vertical, 13)
+                }
+                rowDivider
+                HStack {
+                    rowLabel("Need help with your license?")
+                    Spacer()
+                    Button("Email Support") { NSWorkspace.shared.open(LicenseAPI.manageURL) }
+                        .buttonStyle(AuraSecondaryButtonStyle(compact: true))
+                }
+                .padding(.vertical, 10)
+                rowDivider
+                deactivateRow
+            }
+            footnote("Your license covers up to 3 Macs. Deactivate this one to free a slot for another Mac.")
+        }
+    }
+
+    /// A colored dot + label reflecting the live license state.
+    @ViewBuilder private var licenseStatusBadge: some View {
+        let (dot, label): (Color, String) = {
+            switch license.status {
+            case .licensed:          return (.green, "Active")
+            case .offlineGrace:      return (.orange, "Active (offline)")
+            case .invalid(.revoked): return (AuraTheme.destructive, "Revoked")
+            case .activating:        return (AuraTheme.textTertiary, "Activating…")
+            default:                 return (AuraTheme.textTertiary, "Not active")
+            }
+        }()
+        HStack(spacing: 6) {
+            Circle().fill(dot).frame(width: 7, height: 7)
+            Text(label)
+                .font(.system(size: 14))
+                .foregroundStyle(AuraTheme.textSecondary)
+        }
+    }
+
+    /// Two-step inline confirm (no native dialog), mirroring `clearRow`. On
+    /// confirm it frees this Mac's Dodo slot, clears the Keychain, and re-locks
+    /// the app (the gate window reappears via `LicenseManager.onLockedOut`).
+    @ViewBuilder private var deactivateRow: some View {
+        if confirmingDeactivate {
+            HStack(spacing: 10) {
+                Text("Deactivate Carpet on this Mac? You'll need to re-enter your key to use it here again.")
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(AuraTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                Button("Cancel") {
+                    withAnimation(.easeOut(duration: 0.15)) { confirmingDeactivate = false }
+                }
+                .buttonStyle(AuraSecondaryButtonStyle(compact: true))
+                .disabled(isDeactivating)
+                Button {
+                    Task {
+                        isDeactivating = true
+                        await license.deactivate()
+                        isDeactivating = false
+                        confirmingDeactivate = false
+                    }
+                } label: {
+                    Group {
+                        if isDeactivating {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Text("Deactivate")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    .padding(.vertical, 7)
+                    .padding(.horizontal, 14)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(AuraTheme.destructive))
+                }
+                .buttonStyle(.plain)
+                .disabled(isDeactivating)
+            }
+            .padding(.vertical, 10)
+        } else {
+            HStack {
+                rowLabel("Deactivate this Mac")
+                Spacer()
+                Button {
+                    withAnimation(.easeOut(duration: 0.15)) { confirmingDeactivate = true }
+                } label: {
+                    Text("Deactivate…")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(AuraTheme.destructive)
+                        .padding(.vertical, 7)
+                        .padding(.horizontal, 14)
+                        .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(AuraTheme.destructive.opacity(0.12)))
+                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .strokeBorder(AuraTheme.destructive.opacity(0.22)))
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.vertical, 10)
         }
     }
 

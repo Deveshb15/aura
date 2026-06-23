@@ -84,6 +84,7 @@ final class AppEnvironment {
     let themeManager = ThemeManager()
     let toastCenter = ToastCenter()
     let updater = SparkleUpdater()
+    let license = LicenseManager()
     let xBridge: XBookmarkBridge
 
     init() {

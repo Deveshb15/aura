@@ -21,6 +21,7 @@ struct AuraApp: App {
                 .environment(appDelegate.env.settingsPresenter)
                 .environment(appDelegate.env.themeManager)
                 .environment(appDelegate.env.toastCenter)
+                .environment(appDelegate.env.license)
                 .frame(minWidth: 820, minHeight: 560)
         }
         .windowResizability(.contentMinSize)

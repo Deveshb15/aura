@@ -113,6 +113,27 @@ final class NotchController {
         }
     }
 
+    /// Tears the notch panel down completely so the app can re-lock (license
+    /// revoked mid-session, or this Mac deactivated). A later `show()` rebuilds it
+    /// from scratch. Mirrors `deinit`'s cleanup for the always-on monitors.
+    func hide() {
+        expandWorkItem?.cancel()
+        collapseWorkItem?.cancel()
+        pendingExpiryTask?.cancel()
+        screensChangedWork?.cancel()
+        composeCollapseWork?.cancel()
+
+        if let globalMonitor { NSEvent.removeMonitor(globalMonitor) }
+        if let localMonitor { NSEvent.removeMonitor(localMonitor) }
+        globalMonitor = nil
+        localMonitor = nil
+
+        panel?.orderOut(nil)
+        panel = nil
+        container = nil
+        hostingView = nil
+    }
+
     /// Display reconfiguration (plug/unplug, lid open/close, resolution change)
     /// can fire several notifications in a burst — debounce, then relocate.
     private func scheduleScreensChanged() {

@@ -1,33 +1,31 @@
 import AppKit
 import SwiftUI
 
-/// A borderless-looking `NSWindow` that can still become key, so the name
-/// `TextField` in onboarding receives keyboard input even though the app is a
-/// menu-bar accessory agent.
-final class OnboardingWindow: NSWindow {
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
-}
-
-/// Owns the first-launch onboarding window and its lifecycle. Mirrors the
-/// AppKit-owns-the-window / SwiftUI-hosted-inside idiom used by `NotchController`.
-///
-/// While onboarding is open the app is temporarily promoted to `.regular` (so it
-/// foregrounds with a real key window for the name field); on finish it reverts
-/// to `.accessory`. The completion closure is what wires the app "live" — it
-/// reveals the notch and starts clipboard capture.
+/// Owns the standalone license-gate window — the hard paywall shown to a
+/// returning user whose key is missing/cleared/revoked, and re-shown mid-session
+/// when a license is revoked or this Mac is deactivated. A near-verbatim clone of
+/// `OnboardingController`: it reuses that file's `OnboardingWindow` (a borderless
+/// window that can still become key, so the license `TextField` accepts input
+/// while the app is a menu-bar accessory), promotes the app to `.regular` while
+/// shown, and reverts to `.accessory` on finish.
 @MainActor
-final class OnboardingController {
+final class LicenseActivationController {
     private var window: OnboardingWindow?
     private let license: LicenseManager
-    private let onFinish: () -> Void
+    private let onActivated: () -> Void
 
-    init(license: LicenseManager, onFinish: @escaping () -> Void) {
+    init(license: LicenseManager, onActivated: @escaping () -> Void) {
         self.license = license
-        self.onFinish = onFinish
+        self.onActivated = onActivated
     }
 
     func show() {
+        guard window == nil else {
+            NSApp.activate(ignoringOtherApps: true)
+            window?.makeKeyAndOrderFront(nil)
+            return
+        }
+
         let size = NSSize(width: 560, height: 640)
         let window = OnboardingWindow(
             contentRect: NSRect(origin: .zero, size: size),
@@ -46,12 +44,15 @@ final class OnboardingController {
         window.collectionBehavior = [.moveToActiveSpace]
         window.level = .normal
 
-        let root = OnboardingView(license: license, onFinish: { [weak self] in self?.finish() })
+        let root = LicenseActivationView(
+            license: license,
+            onActivated: { [weak self] in self?.finish() },
+            showsQuit: true)
+            .preferredColorScheme(.dark)
         window.contentView = NSHostingView(rootView: root)
         window.center()
         self.window = window
 
-        // Promote to a regular foreground app for the duration of onboarding.
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
@@ -61,6 +62,6 @@ final class OnboardingController {
         window?.close()
         window = nil
         NSApp.setActivationPolicy(.accessory)
-        onFinish()
+        onActivated()
     }
 }

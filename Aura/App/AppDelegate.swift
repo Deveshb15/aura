@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var libraryHotKey: GlobalHotKey?
     private var composeHotKey: GlobalHotKey?
     private var onboardingController: OnboardingController?
+    private var licenseController: LicenseActivationController?
     private var didActivateApp = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -65,14 +66,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.routeNewNote()
         }
 
-        // Show onboarding on first launch; otherwise go live immediately. On the
-        // first run the notch reveal and clipboard capture are deferred until
-        // onboarding finishes, so nothing nudges out over the welcome window.
-        if UserDefaults.standard.bool(forKey: "hasCompletedOnboarding") {
+        // A revoked or deactivated license tears the app back down to the paywall
+        // while it's running (see lockApp()).
+        env.license.onLockedOut = { [weak self] in self?.lockApp() }
+
+        // Hard paywall. The notch reveal + clipboard capture (activateAppIfNeeded)
+        // are unreachable until the app is BOTH onboarded and licensed:
+        //   • not onboarded        → onboarding (carousel → license → launch-at-login)
+        //   • onboarded + licensed → go live now, then re-validate in the background
+        //   • onboarded, no license→ standalone license gate (key cleared/revoked)
+        // `.offlineGrace` counts as licensed, so a licensed relaunch never blocks
+        // on the network.
+        let onboarded = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+        switch (onboarded, env.license.isLicensed) {
+        case (false, _):
+            presentOnboarding()
+        case (true, true):
             autoEnableLaunchAtLoginForExistingUsersIfNeeded()
             activateAppIfNeeded()
-        } else {
-            presentOnboarding()
+            Task { await env.license.validateOnLaunch() }
+        case (true, false):
+            presentLicenseGate()
         }
     }
 
@@ -111,15 +125,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Present the first-launch onboarding window (no-op if already showing).
-    /// Its completion marks onboarding done and brings the app live.
+    /// Its completion marks onboarding done and brings the app live. The license
+    /// step inside it is a hard wall — onboarding can't complete unlicensed.
     private func presentOnboarding() {
         guard onboardingController == nil else { return }
-        let controller = OnboardingController { [weak self] in
+        let controller = OnboardingController(license: env.license) { [weak self] in
             UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
             self?.activateAppIfNeeded()
             self?.onboardingController = nil
         }
         onboardingController = controller
         controller.show()
+    }
+
+    /// Present the standalone license gate (returning user with no/invalid key,
+    /// or a mid-session re-lock). On successful activation it brings the app live.
+    private func presentLicenseGate() {
+        guard licenseController == nil else { return }
+        let controller = LicenseActivationController(license: env.license) { [weak self] in
+            self?.activateAppIfNeeded()
+            self?.licenseController = nil
+        }
+        licenseController = controller
+        controller.show()
+    }
+
+    /// Tear the app back down to the hard paywall mid-session — triggered when a
+    /// background re-validate finds the key revoked (refund/chargeback) or the
+    /// user deactivates this Mac from Settings. Hides the notch, stops capture,
+    /// resets the one-shot activation guard, and re-presents the gate.
+    private func lockApp() {
+        notchController?.hide()
+        env.clipboardWatcher.stop()
+        env.settingsPresenter.isPresented = false
+        didActivateApp = false
+        presentLicenseGate()
     }
 }
