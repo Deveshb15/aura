@@ -50,7 +50,7 @@ final class DataStore {
             await self?.semanticIndex.reload()
             await self?.backfillPending()
             await self?.backfillSearchIndex()
-            await self?.backfillImageLabels()
+            await self?.backfillStaleEnrichment()
         }
     }
 
@@ -429,7 +429,7 @@ final class DataStore {
     /// avoid clobbering those concurrent writers.
     /// Bump when enrichment gains a new extractor, so already-embedded items
     /// get re-enriched once by the matching backfill (stamped in sourceHash).
-    static let enrichVersion = "enrich-v2"   // v2 = OCR + image classification
+    static let enrichVersion = "enrich-v3"   // v3 = + document text (Word/RTF/ODT/text/code)
 
     func enrichForSearch(itemID: String) async {
         guard let item = try? await dbPool.read({ db in try Item.fetchOne(db, key: itemID) }) else { return }
@@ -478,10 +478,15 @@ final class DataStore {
 
         case .file:
             guard let path = item.assetPath else { return nil }
-            let isPDF = item.uti == "com.adobe.pdf" || (item.fileName?.lowercased().hasSuffix(".pdf") ?? false)
-            guard isPDF else { return nil }
             let url = assetStore.absoluteURL(for: path)
-            return await Task.detached { PDFTextExtractor.extractText(from: url) }.value
+            let uti = item.uti
+            let fileName = item.fileName
+            // PDFs, Word/RTF/ODT, plain text, code, HTML, … — see
+            // `DocumentTextExtractor`. Formats with no text layer return nil and
+            // stay searchable by filename alone.
+            return await Task.detached {
+                DocumentTextExtractor.extractText(from: url, uti: uti, fileName: fileName)
+            }.value
 
         case .url, .text:
             guard UserDefaults.standard.object(forKey: "linkPreviewsEnabled") as? Bool ?? true,
@@ -540,17 +545,21 @@ final class DataStore {
         await semanticIndex.reload()
     }
 
-    /// One-time re-enrichment of images embedded before classification existed
-    /// (sourceHash missing or from an older enrich generation). enrichForSearch
-    /// rewrites extractedText (OCR + labels), re-embeds, and stamps the current
-    /// version — so each image is touched once, ever. ~50–150 ms per image,
-    /// capped per launch so a big vault spreads over a few launches.
-    private func backfillImageLabels() async {
+    /// One-time re-enrichment of images and documents embedded before the
+    /// current extractor generation (sourceHash missing or older). For each,
+    /// enrichForSearch rewrites extractedText (image OCR + labels, or document
+    /// text), re-embeds, and stamps the current version — so every item is
+    /// touched once, ever. Files that yield no text (zip, app, iWork…) still get
+    /// stamped via their filename embedding, so they aren't retried forever.
+    /// ~50–150 ms each, capped per launch so a big vault spreads over a few
+    /// launches. Restricted to images + files so the (typically far larger) set
+    /// of notes/links isn't needlessly re-embedded by a document-only bump.
+    private func backfillStaleEnrichment() async {
         let stale: [String] = (try? await dbPool.read { db in
             try String.fetchAll(db, sql: """
                 SELECT item.id FROM item
                 JOIN embedding ON embedding.itemId = item.id
-                WHERE item.type = 'image'
+                WHERE item.type IN ('image', 'file')
                   AND (embedding.sourceHash IS NULL OR embedding.sourceHash <> ?)
                 ORDER BY item.createdAt DESC
                 LIMIT 100

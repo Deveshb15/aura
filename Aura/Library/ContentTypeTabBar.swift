@@ -2,34 +2,36 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 /// Content-type filter for the library, matching the redesigned tab bar
-/// (Notes / Text / Images / Links / Music / Videos).
+/// (Notes / Text / Images / Documents / Links / Music / Videos).
 enum ContentTab: String, CaseIterable, Identifiable {
-    case all, notes, writing, images, links, music, videos
+    case all, notes, writing, images, documents, links, music, videos
 
     var id: String { rawValue }
 
     var label: String {
         switch self {
-        case .all:     return "All"
-        case .notes:   return "Notes"
-        case .writing: return "Text"
-        case .images:  return "Images"
-        case .links:   return "Links"
-        case .music:   return "Music"
-        case .videos:  return "Videos"
+        case .all:       return "All"
+        case .notes:     return "Notes"
+        case .writing:   return "Text"
+        case .images:    return "Images"
+        case .documents: return "Documents"
+        case .links:     return "Links"
+        case .music:     return "Music"
+        case .videos:    return "Videos"
         }
     }
 
     /// Tab glyph (SF Symbols), a clean cohesive set.
     var symbol: String {
         switch self {
-        case .all:     return "square.grid.2x2.fill"
-        case .notes:   return "note.text"
-        case .writing: return "text.alignleft"
-        case .images:  return "photo.fill"
-        case .links:   return "link"
-        case .music:   return "music.note"
-        case .videos:  return "play.rectangle.fill"
+        case .all:       return "square.grid.2x2.fill"
+        case .notes:     return "note.text"
+        case .writing:   return "text.alignleft"
+        case .images:    return "photo.fill"
+        case .documents: return "doc.text"
+        case .links:     return "link"
+        case .music:     return "music.note"
+        case .videos:    return "play.rectangle.fill"
         }
     }
 
@@ -52,7 +54,13 @@ enum ContentTab: String, CaseIterable, Identifiable {
         case .image:
             return [.images]
         case .file:
-            return [isImageUTI(item.uti) ? .images : .links]
+            // Files are routed by UTI: images join the photo grid, audio/video
+            // join Music/Videos, and everything else (PDFs, Word, text, code,
+            // archives…) lands in Documents — never the catch-all Links tab.
+            if isImageUTI(item.uti) { return [.images] }
+            if conformsTo(item.uti, .audio) { return [.music] }
+            if conformsTo(item.uti, .audiovisualContent) { return [.videos] }
+            return [.documents]
         case .url:
             let host = (item.host ?? URL(string: item.textContent ?? "")?.host ?? "").lowercased()
             return [linkTab(forHost: host)]
@@ -84,8 +92,12 @@ enum ContentTab: String, CaseIterable, Identifiable {
     }
 
     private static func isImageUTI(_ uti: String?) -> Bool {
+        conformsTo(uti, .image)
+    }
+
+    private static func conformsTo(_ uti: String?, _ parent: UTType) -> Bool {
         guard let uti, let type = UTType(uti) else { return false }
-        return type.conforms(to: .image)
+        return type.conforms(to: parent)
     }
 }
 
