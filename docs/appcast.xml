@@ -3,6 +3,15 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>3.0.0</title>
+            <pubDate>Tue, 23 Jun 2026 19:44:20 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>25</sparkle:version>
+            <sparkle:shortVersionString>3.0.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.0.0/Carpet-3.0.0.dmg" length="18166172" type="application/octet-stream" sparkle:edSignature="XswFf1JsYamrUJmHouifQjX7qH2P8417/NDWXG7X/F/pPvl2cubv0EiPeKr20zpYYujy8wOpl10ZfDxh7IRWCg=="/>
+        </item>
+        <item>
             <title>2.2.5</title>
             <pubDate>Tue, 23 Jun 2026 11:20:41 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -59,20 +68,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.2/Carpet-2.2.2.dmg" length="17885577" type="application/octet-stream" sparkle:edSignature="gGmcKw5jyoJ9+IkrTRkWDyTRKMAS7wK/ZW26tZqh0vVvejCsfTQXMTiXqp5jhNBkfpBW9UZninpOoXBX3Y1DCw=="/>
-        </item>
-        <item>
-            <title>2.2.1</title>
-            <pubDate>Wed, 17 Jun 2026 22:41:11 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>19</sparkle:version>
-            <sparkle:shortVersionString>2.2.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>Dropped images from the web now stick</h2>
-<ul>
-  <li><b>Web image drops are fixed.</b> Dragging a picture straight out of Safari, Chrome, or another browser onto the notch now reliably saves the image itself — instead of quietly doing nothing, or filing away the page link in its place.</li>
-</ul>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.1/Carpet-2.2.1.dmg" length="17890126" type="application/octet-stream" sparkle:edSignature="FwhA0wuZfXnidsHqpGcRuIQ/jjDa1Bf+hbmDnQHKctZV+3ouBCgdvyynTYRmV6AooIhAtZhbbSOyc//nuSauBg=="/>
         </item>
     </channel>
 </rss>
