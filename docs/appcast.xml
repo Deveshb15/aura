@@ -3,6 +3,22 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>3.1.0</title>
+            <pubDate>Wed, 24 Jun 2026 00:35:40 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>27</sparkle:version>
+            <sparkle:shortVersionString>3.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Search inside your documents</h2>
+<ul>
+  <li><b>Documents are now searchable by their contents.</b> Carpet reads the text out of PDFs, Word, RTF, plain text and code files, so a search matches what's <i>inside</i> a file, not just its name.</li>
+  <li><b>New Documents tab.</b> Saved files are sorted by kind — images join the photo grid, audio and video go to Music and Videos, and everything else lands in a dedicated Documents tab instead of Links.</li>
+  <li><b>Tidier notch.</b> The recents strip is centered with balanced spacing, and Open App now sits neatly on the right.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.1.0/Carpet-3.1.0.dmg" length="18177889" type="application/octet-stream" sparkle:edSignature="7ozp4VXlpeaVtSyyXhLC4bdtrLwwvNLpnh/PMUeZzh/WRJf9FcDg2vkmjsNhbqJfusY9DEUc/KDOA8+uEtb4Dg=="/>
+        </item>
+        <item>
             <title>3.0.1</title>
             <pubDate>Tue, 23 Jun 2026 21:26:31 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -49,20 +65,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.4/Carpet-2.2.4.dmg" length="17949936" type="application/octet-stream" sparkle:edSignature="OAswYn2o3vFEJRRLlic+xEiYGfHECjidTEa3jTy9iRAa5BzgzyDi4ltXVJ21IL/IByiWl0rP0D6nUVxzeb6pBw=="/>
-        </item>
-        <item>
-            <title>2.2.3</title>
-            <pubDate>Thu, 18 Jun 2026 15:30:50 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>21</sparkle:version>
-            <sparkle:shortVersionString>2.2.3</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>Import your X bookmarks, properly</h2>
-<ul>
-  <li><b>X bookmark setup is back.</b> Settings → Data now walks you through it: a <b>How does this work?</b> guide (get the extension → bookmark on X → import your history) and an <b>Import my bookmarks…</b> button that pulls in up to 400 of your existing X bookmarks.</li>
-</ul>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.3/Carpet-2.2.3.dmg" length="17924281" type="application/octet-stream" sparkle:edSignature="3Gh/3RxP6fa5h8kDUbB9vEEdy4gtwr1RZGuBUkVEwQuIJJC9JHP09cNdkqVk9luFn4kY3UFdpcNwHuhlJbH1CA=="/>
         </item>
     </channel>
 </rss>
