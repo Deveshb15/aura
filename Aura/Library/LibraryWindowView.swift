@@ -281,32 +281,45 @@ struct LibraryWindowView: View {
     // MARK: - Content
 
     @ViewBuilder private var content: some View {
-        if gridItems.isEmpty {
+        // The draft is pinned to column 0 inside BentoGridView (kept out of the
+        // masonry balancing), so the grid receives only the saved items.
+        if filteredItems.isEmpty, composeLauncher.draft == nil {
             emptyState
         } else {
-            BentoGridView(items: gridItems)
+            BentoGridView(items: filteredItems)
         }
-    }
-
-    /// The grid's items, with any in-progress note draft pinned to the front so
-    /// it renders as the first (top-left) card.
-    private var gridItems: [Item] {
-        guard let draft = composeLauncher.draft else { return filteredItems }
-        return [draft] + filteredItems.filter { $0.id != draft.id }
     }
 
     /// Starts an inline note draft: a transient, unsaved `.text` item shown as a
     /// focused card at the top of the grid. Saved on non-empty blur, discarded
-    /// when left empty. Always opens a *fresh* draft — if one is already open,
-    /// swapping it out tears down its card, which commits it (saves non-empty /
-    /// discards empty) as it loses focus, so "New note" while writing saves the
-    /// current note first.
+    /// when left empty.
+    ///
+    /// Opening a *fresh* draft while one is already being edited must save the
+    /// current one first. We can't rely on the old card's teardown to do that —
+    /// AppKit doesn't reliably resign a first responder that's removed from the
+    /// hierarchy, and the new draft's autofocus is dispatched async, so the old
+    /// editor's `commit()` often never fired and the in-progress note was lost.
+    /// Instead we resign the focused editor *synchronously, while it's still
+    /// mounted*: `makeFirstResponder(nil)` → `resignFirstResponder` →
+    /// `onFocusChange(false)` → `commit()` saves it (or discards if empty). At
+    /// that point `composeLauncher.draft` is still the old draft, so `commit()`'s
+    /// id check matches and it clears it; we then install the fresh draft.
     private func startDraft() {
         var draft = Item(type: .text)
         draft.sourceApp = "Carpet"
         draft.textContent = ""
         query = ""                                   // leave any search so the draft shows
-        composeLauncher.draft = draft
+        // Commit the current draft and install the fresh one in ONE animated
+        // transaction: `makeFirstResponder(nil)` synchronously resigns the focused
+        // editor → its blur handler saves (non-empty) / discards (empty) and sets
+        // `composeLauncher.draft = nil`; we then set the new draft. Net change is
+        // draft1 → draft2 in a single render, so the old card cross-fades out as
+        // the fresh one slides in. The draft is isolated from the masonry, so this
+        // animates ONLY column 0 — no full-grid reshuffle.
+        withAnimation(.smooth(duration: 0.3)) {
+            (NSApp.keyWindow ?? NSApp.mainWindow)?.makeFirstResponder(nil)
+            composeLauncher.draft = draft
+        }
         composeLauncher.autofocusItemID = draft.id
     }
 
@@ -377,6 +390,8 @@ private struct WindowFullScreenEnabler: NSViewRepresentable {
     /// to the in-app composer only while the Library is focused.
     final class ConfigView: NSView {
         let launcher: InAppComposeLauncher
+        /// Commits an in-progress note when the user clicks outside its editor.
+        private var outsideClickMonitor: Any?
 
         init(launcher: InAppComposeLauncher) {
             self.launcher = launcher
@@ -384,11 +399,24 @@ private struct WindowFullScreenEnabler: NSViewRepresentable {
         }
         required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+        deinit {
+            if let outsideClickMonitor { NSEvent.removeMonitor(outsideClickMonitor) }
+        }
+
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
-            guard let window else { return }
+            guard let window else {
+                // Detached (window closing) — tear the monitor down so it can't
+                // keep intercepting clicks after the Library is gone.
+                if let outsideClickMonitor {
+                    NSEvent.removeMonitor(outsideClickMonitor)
+                    self.outsideClickMonitor = nil
+                }
+                return
+            }
             applyChrome()
             launcher.isLibraryKey = window.isKeyWindow
+            installOutsideClickMonitor()
             for delay in [0.1, 0.5, 1.0, 2.0, 3.0] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.applyChrome() }
             }
@@ -398,6 +426,24 @@ private struct WindowFullScreenEnabler: NSViewRepresentable {
             NotificationCenter.default.addObserver(
                 self, selector: #selector(didResignKey),
                 name: NSWindow.didResignKeyNotification, object: window)
+        }
+
+        /// A click anywhere outside the focused note editor commits the draft
+        /// (saves non-empty / discards empty) via the editor's blur handler —
+        /// the single save authority. Clicks inside the editor (caret placement)
+        /// and clicks while nothing is being edited pass through untouched.
+        private func installOutsideClickMonitor() {
+            guard outsideClickMonitor == nil else { return }
+            outsideClickMonitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { event in
+                guard let window = event.window,
+                      let editor = window.firstResponder as? SelfSizingTextView
+                else { return event }
+                let point = editor.convert(event.locationInWindow, from: nil)
+                if !editor.bounds.contains(point) {
+                    window.makeFirstResponder(nil)   // → resignFirstResponder → commit()
+                }
+                return event                          // never swallow the click
+            }
         }
 
         @objc private func didBecomeKey() { applyChrome(); launcher.isLibraryKey = true }

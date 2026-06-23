@@ -3,6 +3,7 @@ import AppKit
 import Observation
 import GRDB
 import os
+import SwiftUI   // withAnimation: animate the masonry as items stream in
 
 /// The single source of truth shared by BOTH surfaces (the notch panel and the
 /// library window). Wraps a GRDB `DatabasePool`, publishes reactive item arrays
@@ -92,7 +93,14 @@ final class DataStore {
             self.itemsFlushScheduled = false
             if let latest = self.pendingItems {
                 self.pendingItems = nil
-                self.applyItems(latest)
+                // Animate post-initial updates so a captured/saved/deleted item
+                // slides the grid (the stable masonry keeps it to one column).
+                // The first delivery (above) stays un-animated so the grid doesn't
+                // fly in on launch. Search/tab changes don't touch libraryItems, so
+                // they remain instant.
+                withAnimation(.smooth(duration: 0.32)) {
+                    self.applyItems(latest)
+                }
             }
         }
     }
@@ -258,6 +266,53 @@ final class DataStore {
             }
         } catch {
             NSLog("Aura: saveNote failed: \(error)")
+        }
+    }
+
+    /// Inserts (or replaces) an item in `libraryItems` immediately, so a just-saved
+    /// in-app note appears with NO database round-trip gap. Used by `saveDraftNote`
+    /// so the card the user typed in stays continuous (same id, same position) on
+    /// save instead of vanishing and reappearing when the observation lands.
+    func applyOptimisticInsert(_ item: Item) {
+        if let idx = libraryItems.firstIndex(where: { $0.id == item.id }) {
+            libraryItems[idx] = item
+        } else {
+            // Keep the createdAt-DESC ordering the observation uses.
+            let insertAt = libraryItems.firstIndex(where: { $0.createdAt <= item.createdAt }) ?? libraryItems.count
+            libraryItems.insert(item, at: insertAt)
+        }
+        recentItems = Array(libraryItems.prefix(40))
+    }
+
+    /// Persists an in-app note draft, **reusing the draft's `id` and `createdAt`**
+    /// so the saved row lands at the exact position the draft occupied (no jump
+    /// when the observation arrives). Inserts optimistically first, then writes to
+    /// the DB + enriches asynchronously. Mirrors `saveNote`'s title/link handling.
+    func saveDraftNote(_ draft: Item, text: String, sourceApp: String? = "Carpet") {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+
+        var item = Item(id: draft.id, type: .text, createdAt: draft.createdAt)
+        item.textContent = trimmed
+        item.title = Self.titleSnippet(from: trimmed)
+        item.sourceApp = sourceApp
+        if let url = CaptureCandidate.firstWebURL(in: trimmed) {
+            item.host = url.host
+            item.urlSubtype = URLClassifier.subtype(for: url).rawValue
+        }
+
+        applyOptimisticInsert(item)
+
+        let toInsert = item
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.dbPool.write { db in try toInsert.insert(db) }
+                if toInsert.linkURL != nil { await self.enrichLink(toInsert) }
+                await self.enrichForSearch(itemID: toInsert.id)
+            } catch {
+                NSLog("Aura: saveDraftNote failed: \(error)")
+            }
         }
     }
 

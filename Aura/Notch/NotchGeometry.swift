@@ -106,11 +106,14 @@ struct NotchGeometry {
                height: height)
     }
 
-    /// OPEN-trigger zone: hugs the physical notch (a little wider for an easy
-    /// horizontal target, but only a hair taller, so it does NOT reach down into
-    /// a browser's tab bar / new-tab button below the notch). Monitor-based.
+    /// OPEN-trigger zone: stays ENTIRELY within the notch / menu-bar band at the
+    /// very top of the screen. A little wider than the notch for an easy
+    /// horizontal target, but its bottom edge is pulled UP a few points ABOVE the
+    /// menu-bar's lower edge, so it never reaches down into a browser's tab bar /
+    /// new-tab button below the notch (which used to pop the panel open when
+    /// switching tabs). Monitor-based.
     var notchRect: NSRect {
-        globalRect(width: max(notchWidth, 180) + 30, height: notchHeight + 10)
+        globalRect(width: max(notchWidth, 180) + 30, height: notchHeight - 6)
     }
 
     /// Large CLOSE zone: the expanded panel area (slightly padded for forgiveness).
@@ -141,7 +144,10 @@ struct NotchGeometry {
         let size: CGSize
         switch mode {
         case .collapsed:
-            size = CGSize(width: max(notchWidth, 180) + 16, height: notchHeight + 8)
+            // Cover the notch itself for clicks / drag-drop, but do NOT spill
+            // below it into the browser tab bar, so tab clicks just under the
+            // notch pass through instead of being swallowed.
+            size = CGSize(width: max(notchWidth, 180) + 16, height: notchHeight)
         case .expanded:
             size = CGSize(width: Self.expandedWidth + 24,
                           height: notchHeight + Self.expandedHeight + 12)

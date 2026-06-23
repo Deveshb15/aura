@@ -96,12 +96,18 @@ struct TextCardView: View {
         let new = draftText.trimmingCharacters(in: .whitespacesAndNewlines)
 
         if sessionIsDraft {
-            // If a *different* draft is already active, this card was handed off
-            // (e.g. "New note" opened a fresh draft) — save our text but leave
-            // the new draft alone instead of clearing it.
+            if new.isEmpty {
+                // Wrote nothing → discard the draft (no row, no insert).
+                if composeLauncher.draft?.id == item.id { composeLauncher.draft = nil }
+                return
+            }
+            // Save IN PLACE: `saveDraftNote` reuses this draft's id and inserts it
+            // optimistically, then we clear the draft — both in one render, so the
+            // card's identity is continuous (draft → libraryItems, same id, same
+            // column) and it never moves on save. If a *different* draft is already
+            // active (handed off by "New note"), leave it alone.
+            store.saveDraftNote(item, text: new)
             if composeLauncher.draft?.id == item.id { composeLauncher.draft = nil }
-            guard !new.isEmpty else { return }   // wrote nothing → vanish
-            Task { await store.saveNote(text: new, sourceApp: "Carpet") }
             return
         }
 

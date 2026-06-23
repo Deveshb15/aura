@@ -22,6 +22,13 @@ struct CardView: View {
             CardMetaFooter(item: item)
         }
             .frame(maxWidth: .infinity, alignment: .leading)
+            // Height hint for MasonryLayout: text cards self-size (measure), others
+            // use the aspect-correct estimate so the layout never measures an
+            // image card under an ambiguous width-only proposal.
+            .layoutValue(key: CardHeightHintKey.self,
+                         value: CardHeightHint(
+                            estimate: MasonryColumnizer.estimatedHeight(item, columnWidth: columnWidth),
+                            isText: item.itemType == .text))
             .background(AuraTheme.surface, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(AuraTheme.hairline))
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
