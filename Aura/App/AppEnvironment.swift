@@ -41,6 +41,15 @@ final class ThemeManager {
         didSet { UserDefaults.standard.set(mode == .dark, forKey: "isDarkTheme") }
     }
 
+    /// Installed by the Library window's AppKit layer. The palette is dynamic
+    /// `NSColor`, so a theme flip re-resolves every color *instantly* — there is
+    /// no value to interpolate. To make the switch feel like a light dimming up /
+    /// down, the window snapshots its current rendering, flips underneath, and
+    /// cross-fades the snapshot out. Falls back to an instant flip when unset
+    /// (e.g. no window). Takes the actual flip as a closure so the snapshot is
+    /// captured *before* the appearance changes.
+    @ObservationIgnored var crossfade: ((@escaping () -> Void) -> Void)?
+
     init() {
         let isDark = UserDefaults.standard.object(forKey: "isDarkTheme") as? Bool ?? true
         mode = isDark ? .dark : .light
@@ -49,6 +58,15 @@ final class ThemeManager {
     var colorScheme: ColorScheme { mode == .dark ? .dark : .light }
 
     func toggle() { mode = (mode == .dark) ? .light : .dark }
+
+    /// Flips the theme with a smooth cross-fade when a window is available.
+    func toggleAnimated() {
+        if let crossfade {
+            crossfade { [weak self] in self?.toggle() }
+        } else {
+            toggle()
+        }
+    }
 }
 
 /// Dependency-injection root: builds the database, store, and services once and

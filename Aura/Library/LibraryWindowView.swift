@@ -63,7 +63,7 @@ struct LibraryWindowView: View {
         }
         .animation(.spring(response: 0.42, dampingFraction: 0.82), value: toasts.current)
         .preferredColorScheme(theme.colorScheme)
-        .background(WindowFullScreenEnabler(launcher: composeLauncher))
+        .background(WindowFullScreenEnabler(launcher: composeLauncher, theme: theme))
         // ⌘N starts an inline note draft while this window is key (distinct from
         // the global ⌃⌘N, which the notch handles when the Library isn't focused).
         .background {
@@ -158,7 +158,7 @@ struct LibraryWindowView: View {
     /// Sits just left of the gear; one tap flips the whole app's theme.
     private var themeToggle: some View {
         Button {
-            withAnimation(.smooth(duration: 0.35)) { theme.toggle() }
+            theme.toggleAnimated()
         } label: {
             Image(systemName: theme.mode == .dark ? "moon.fill" : "sun.max.fill")
                 .font(.system(size: 15, weight: .medium))
@@ -376,7 +376,8 @@ struct LibraryWindowView: View {
 /// `.fullScreenPrimary`, leaving the green button to only "maximize".
 private struct WindowFullScreenEnabler: NSViewRepresentable {
     let launcher: InAppComposeLauncher
-    func makeNSView(context: Context) -> NSView { ConfigView(launcher: launcher) }
+    let theme: ThemeManager
+    func makeNSView(context: Context) -> NSView { ConfigView(launcher: launcher, theme: theme) }
     func updateNSView(_ nsView: NSView, context: Context) {
         (nsView as? ConfigView)?.applyChrome()
     }
@@ -390,11 +391,15 @@ private struct WindowFullScreenEnabler: NSViewRepresentable {
     /// to the in-app composer only while the Library is focused.
     final class ConfigView: NSView {
         let launcher: InAppComposeLauncher
+        let theme: ThemeManager
         /// Commits an in-progress note when the user clicks outside its editor.
         private var outsideClickMonitor: Any?
+        /// The fading snapshot of the previous theme during a cross-fade.
+        private var themeFadeOverlay: NSView?
 
-        init(launcher: InAppComposeLauncher) {
+        init(launcher: InAppComposeLauncher, theme: ThemeManager) {
             self.launcher = launcher
+            self.theme = theme
             super.init(frame: .zero)
         }
         required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -407,16 +412,20 @@ private struct WindowFullScreenEnabler: NSViewRepresentable {
             super.viewDidMoveToWindow()
             guard let window else {
                 // Detached (window closing) — tear the monitor down so it can't
-                // keep intercepting clicks after the Library is gone.
+                // keep intercepting clicks after the Library is gone, and drop the
+                // theme cross-fade hook so it can't act on a dead window.
                 if let outsideClickMonitor {
                     NSEvent.removeMonitor(outsideClickMonitor)
                     self.outsideClickMonitor = nil
                 }
+                theme.crossfade = nil
                 return
             }
             applyChrome()
             launcher.isLibraryKey = window.isKeyWindow
             installOutsideClickMonitor()
+            // Drive the light/dark switch as a cross-fade of the window's rendering.
+            theme.crossfade = { [weak self] apply in self?.crossfadeTheme(apply) }
             for delay in [0.1, 0.5, 1.0, 2.0, 3.0] {
                 DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in self?.applyChrome() }
             }
@@ -458,5 +467,64 @@ private struct WindowFullScreenEnabler: NSViewRepresentable {
             window.collectionBehavior.remove(.fullScreenNone)
             window.collectionBehavior.insert(.fullScreenPrimary)
         }
+
+        // MARK: - Theme cross-fade
+
+        /// Snapshots the window's current rendering, applies the theme flip
+        /// underneath (the dynamic palette re-resolves instantly), then fades the
+        /// snapshot out — so the switch reads as a smooth light-up / dim-down
+        /// instead of a hard cut. Falls back to an instant flip if the snapshot
+        /// can't be taken.
+        private func crossfadeTheme(_ apply: @escaping () -> Void) {
+            // Host the overlay in the window's frame view (the contentView's
+            // superview), ABOVE SwiftUI's hosting view — adding it as a child of
+            // the hosting view lets SwiftUI reorder/strip it on its next render,
+            // which hid the cross-fade entirely.
+            guard let content = window?.contentView, let host = content.superview else {
+                apply(); return
+            }
+            // Clear any in-flight overlay first so the new snapshot captures the
+            // live content, not a half-faded previous overlay (rapid toggles).
+            themeFadeOverlay?.removeFromSuperview()
+            themeFadeOverlay = nil
+
+            content.displayIfNeeded()
+            guard content.bounds.width > 1, content.bounds.height > 1,
+                  let snapshot = Self.snapshot(of: content) else { apply(); return }
+
+            let overlay = ThemeFadeView(frame: content.frame)
+            overlay.image = snapshot
+            overlay.imageScaling = .scaleAxesIndependently
+            overlay.autoresizingMask = [.width, .height]
+            overlay.wantsLayer = true
+            host.addSubview(overlay, positioned: .above, relativeTo: content)
+            themeFadeOverlay = overlay
+
+            apply()   // flip the theme; SwiftUI re-renders the new appearance below
+
+            NSAnimationContext.runAnimationGroup({ ctx in
+                ctx.duration = 0.5
+                ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                overlay.animator().alphaValue = 0
+            }, completionHandler: { [weak self, weak overlay] in
+                overlay?.removeFromSuperview()
+                if self?.themeFadeOverlay === overlay { self?.themeFadeOverlay = nil }
+            })
+        }
+
+        /// Bitmap snapshot of a view's current on-screen rendering.
+        private static func snapshot(of view: NSView) -> NSImage? {
+            guard let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return nil }
+            view.cacheDisplay(in: view.bounds, to: rep)
+            let image = NSImage(size: view.bounds.size)
+            image.addRepresentation(rep)
+            return image
+        }
     }
+}
+
+/// The fading theme snapshot. Transparent to the cursor so clicks during the
+/// brief cross-fade reach the live content underneath.
+private final class ThemeFadeView: NSImageView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
