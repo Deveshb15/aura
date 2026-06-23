@@ -34,8 +34,14 @@ struct NotchExpandedView: View {
                 }
             }
 
-            openAppButton
+            HStack(spacing: 0) {
+                Spacer(minLength: 0)
+                openAppButton
+            }
+            // Extra breathing room above the button (on top of the VStack's 8pt).
+            .padding(.top, 12)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Brings the full library window forward — an explicit affordance alongside

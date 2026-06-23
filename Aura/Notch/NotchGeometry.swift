@@ -23,7 +23,7 @@ struct NotchGeometry {
     // Fixed panel sizes (the window itself is a constant full-width strip).
     static let windowHeight: CGFloat = 420
     static let expandedWidth: CGFloat = 560
-    static let expandedHeight: CGFloat = 220
+    static let expandedHeight: CGFloat = 204
     /// The peeking "keep this?" card auto-shown when something is copied.
     static let nudgeWidth: CGFloat = 360
     static let nudgeHeight: CGFloat = 76
