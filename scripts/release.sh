@@ -132,7 +132,7 @@ mkdir -p docs
   --download-url-prefix "$DL_PREFIX" \
   --link "https://github.com/$REPO" \
   --maximum-versions 5 \
-  "${EMBED[@]}" \
+  ${EMBED[@]+"${EMBED[@]}"} \
   -o docs/appcast.xml \
   "$APPCAST_DIR"
 echo "appcast → docs/appcast.xml (enclosure: ${DL_PREFIX}$(basename "$DMG_PATH"))"

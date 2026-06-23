@@ -3,6 +3,22 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>2.2.4</title>
+            <pubDate>Tue, 23 Jun 2026 10:41:38 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>22</sparkle:version>
+            <sparkle:shortVersionString>2.2.4</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>A calmer library, and the notch on every display</h2>
+<ul>
+  <li><b>New notes stay put.</b> Writing a note now opens it at the top-left and keeps it exactly there — saving it (or starting another) no longer reshuffles the grid or makes the card jump out and snap back. Only its column gently slides to make room.</li>
+  <li><b>The notch follows your screen.</b> On a dual-monitor setup the notch now appears on whichever display your cursor is on — reach for the top of that screen and it opens there, even on external monitors without a real notch.</li>
+  <li><b>Polish.</b> Filter tabs show per-category counts, the notch gained an “Open App” shortcut under the recents strip, and Carpet checks for updates more often.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.4/Carpet-2.2.4.dmg" length="17949936" type="application/octet-stream" sparkle:edSignature="OAswYn2o3vFEJRRLlic+xEiYGfHECjidTEa3jTy9iRAa5BzgzyDi4ltXVJ21IL/IByiWl0rP0D6nUVxzeb6pBw=="/>
+        </item>
+        <item>
             <title>2.2.3</title>
             <pubDate>Thu, 18 Jun 2026 15:30:50 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -59,22 +75,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.0/Carpet-2.2.0.dmg" length="17882544" type="application/octet-stream" sparkle:edSignature="f3IF/DQYReGAS0cljSZkMrsRhuHLbs7HKGX5cPh/ezRqOHQzPE/E7XQ+qIRfIlDPMqMlnsaDIwUAVciUh2XhBQ=="/>
-        </item>
-        <item>
-            <title>2.1.1</title>
-            <pubDate>Sun, 14 Jun 2026 23:24:51 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>17</sparkle:version>
-            <sparkle:shortVersionString>2.1.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>Light mode, inline notes, sharper search</h2>
-<ul>
-  <li><b>Light & dark themes.</b> A new sun/moon switch beside the gear flips Carpet between a soft paper-white light theme and the original dark — your pick sticks. Dark stays the default, and the notch stays dark in both.</li>
-  <li><b>Edit notes in place.</b> Notes now open and edit right inside the library card — no more modal. Press ⌘N (or use the notch) to start a new note as a focused card at the top of the grid.</li>
-  <li><b>Sharper search.</b> Results are keyword-authoritative, with on-device semantics used only to re-rank — so what you type is what you find.</li>
-</ul>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.1.1/Carpet-2.1.1.dmg" length="17832892" type="application/octet-stream" sparkle:edSignature="j0WmksWLN/XqBgNCzcyPqZBespMQs3DdfL1pU0VpFaeZLa+1OUyCtT7Vwa3gzc/qvprT7yjFu5Fli9NuxqajCA=="/>
         </item>
     </channel>
 </rss>
