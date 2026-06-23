@@ -3,6 +3,15 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>3.0.1</title>
+            <pubDate>Tue, 23 Jun 2026 21:26:31 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>26</sparkle:version>
+            <sparkle:shortVersionString>3.0.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.0.1/Carpet-3.0.1.dmg" length="18170332" type="application/octet-stream" sparkle:edSignature="E9kfiKK0pHf2ymEKVQ1Kuw7sRn/fzqkIJzzO/s5vW1QqxrQ9ndoq6/u0LGl1rYAbcGA9Tor6LY8e3vfLD+XEDA=="/>
+        </item>
+        <item>
             <title>3.0.0</title>
             <pubDate>Tue, 23 Jun 2026 19:44:20 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -54,20 +63,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.3/Carpet-2.2.3.dmg" length="17924281" type="application/octet-stream" sparkle:edSignature="3Gh/3RxP6fa5h8kDUbB9vEEdy4gtwr1RZGuBUkVEwQuIJJC9JHP09cNdkqVk9luFn4kY3UFdpcNwHuhlJbH1CA=="/>
-        </item>
-        <item>
-            <title>2.2.2</title>
-            <pubDate>Thu, 18 Jun 2026 10:03:56 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>20</sparkle:version>
-            <sparkle:shortVersionString>2.2.2</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>X bookmark sync is here</h2>
-<ul>
-  <li><b>The browser extension is live.</b> Carpet — X Bookmark Sync is now on the Chrome Web Store. Settings → Data has a new <b>Get the extension</b> button to install it and start syncing your X bookmarks straight into Carpet.</li>
-</ul>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.2/Carpet-2.2.2.dmg" length="17885577" type="application/octet-stream" sparkle:edSignature="gGmcKw5jyoJ9+IkrTRkWDyTRKMAS7wK/ZW26tZqh0vVvejCsfTQXMTiXqp5jhNBkfpBW9UZninpOoXBX3Y1DCw=="/>
         </item>
     </channel>
 </rss>
