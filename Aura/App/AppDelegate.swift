@@ -70,23 +70,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // while it's running (see lockApp()).
         env.license.onLockedOut = { [weak self] in self?.lockApp() }
 
-        // Hard paywall. The notch reveal + clipboard capture (activateAppIfNeeded)
-        // are unreachable until the app is BOTH onboarded and licensed:
-        //   • not onboarded        → onboarding (carousel → license → launch-at-login)
-        //   • onboarded + licensed → go live now, then re-validate in the background
-        //   • onboarded, no license→ standalone license gate (key cleared/revoked)
-        // `.offlineGrace` counts as licensed, so a licensed relaunch never blocks
-        // on the network.
+        // The license gate is for NEW users only — it lives inside onboarding.
+        // Anyone who already finished onboarding is grandfathered in and never
+        // blocked, even with no key, so this update never walls an existing user.
+        // Users who DID activate a license still get re-validated in the
+        // background, so a refund/chargeback can still revoke their access.
         let onboarded = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
-        switch (onboarded, env.license.isLicensed) {
-        case (false, _):
+        if !onboarded {
             presentOnboarding()
-        case (true, true):
+        } else {
             autoEnableLaunchAtLoginForExistingUsersIfNeeded()
             activateAppIfNeeded()
-            Task { await env.license.validateOnLaunch() }
-        case (true, false):
-            presentLicenseGate()
+            if env.license.licenseKey != nil {
+                Task { await env.license.validateOnLaunch() }
+            }
         }
     }
 

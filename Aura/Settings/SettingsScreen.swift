@@ -40,7 +40,9 @@ struct SettingsScreen: View {
                 VStack(alignment: .leading, spacing: 28) {
                     captureSection
                     generalSection
-                    licenseSection
+                    // Only purchasers (who actually activated a key) see the
+                    // License section; grandfathered/free users never do.
+                    if license.licenseKey != nil { licenseSection }
                     dataSection
                     HelpFooter()
                         .frame(maxWidth: .infinity)
