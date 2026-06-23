@@ -17,11 +17,11 @@ enum LicenseStatus: Equatable {
     case invalid(LicenseInvalidReason)    // server said no → lock
 }
 
-/// Owns license state for the whole app: loads cached state from the Keychain at
-/// init (synchronously, so the launch gate can decide before any network call),
-/// talks to Dodo via `LicenseAPI`, and persists the result. Mirrors
-/// `ThemeManager`'s `@Observable` + manual-persistence shape and lives in
-/// `AppEnvironment`.
+/// Owns license state for the whole app: loads cached state from a device-bound
+/// file at init (synchronously, so the launch gate can decide before any network
+/// call), talks to Dodo via `LicenseAPI`, and persists the result via
+/// `LicenseStore`. Mirrors `ThemeManager`'s `@Observable` + manual-persistence
+/// shape and lives in `AppEnvironment`.
 ///
 /// Anti-piracy stance (perpetual license): we only LOCK on an explicit
 /// `valid:false` from a *successful* Dodo call. A failure to *reach* Dodo never
@@ -43,15 +43,6 @@ final class LicenseManager {
     /// down the notch + clipboard capture and re-present the gate.
     @ObservationIgnored var onLockedOut: (() -> Void)?
 
-    private enum Account {
-        static let key = "licenseKey"
-        static let instance = "instanceId"
-        static let validatedAt = "lastValidatedAt"
-        static let cachedStatus = "cachedStatus"
-    }
-
-    private static let isoFormatter = ISO8601DateFormatter()
-
     /// True when the app is allowed to run. `.offlineGrace` counts as licensed.
     var isLicensed: Bool {
         switch status {
@@ -67,21 +58,26 @@ final class LicenseManager {
     }
 
     init() {
-        let key = Keychain.get(Account.key)
-        licenseKey = key
-        instanceId = Keychain.get(Account.instance)
-        lastValidatedAt = Keychain.get(Account.validatedAt).flatMap { Self.isoFormatter.date(from: $0) }
-
-        let cached = Keychain.get(Account.cachedStatus)
-        if key == nil {
+        let record = LicenseStore.load()
+        // A record copied to a different Mac fails the hardware-ID check — don't
+        // trust any of it, so the new machine must activate (and consume a slot).
+        guard let record, record.deviceUUID == DeviceIdentity.hardwareUUID else {
+            licenseKey = nil
+            instanceId = nil
+            lastValidatedAt = nil
             status = .unlicensed
-        } else if cached == "revoked" {
+            return
+        }
+        licenseKey = record.licenseKey
+        instanceId = record.instanceId
+        lastValidatedAt = record.lastValidatedAt
+        if record.status == "revoked" {
             // A previously-confirmed revoke stays locked even offline; don't
             // silently re-grant on a later offline launch.
             status = .invalid(.revoked)
         } else {
-            // Have a key + a prior good state: assume good (offline-optimistic) so
-            // relaunch never blocks. `validateOnLaunch()` confirms or revokes it.
+            // Offline-optimistic so relaunch never blocks; validateOnLaunch
+            // confirms or revokes it.
             status = .offlineGrace
         }
     }
@@ -103,11 +99,10 @@ final class LicenseManager {
         status = .activating
         do {
             let id = try await LicenseAPI.activate(key: key, name: DeviceIdentity.activationName)
-            let now = Date()
-            persist(key: key, instanceId: id, validatedAt: now, cached: "licensed")
             licenseKey = key
             instanceId = id
-            lastValidatedAt = now
+            lastValidatedAt = Date()
+            persist(status: "licensed")
             status = .licensed
         } catch let error as ActivationError {
             lastError = error
@@ -135,13 +130,12 @@ final class LicenseManager {
         do {
             let valid = try await LicenseAPI.validate(key: key, instanceId: instanceId)
             if valid {
-                let now = Date()
-                lastValidatedAt = now
-                persist(key: key, instanceId: instanceId, validatedAt: now, cached: "licensed")
+                lastValidatedAt = Date()
+                persist(status: "licensed")
                 status = .licensed
             } else {
                 let wasUsable = isLicensed
-                persist(key: key, instanceId: instanceId, validatedAt: lastValidatedAt, cached: "revoked")
+                persist(status: "revoked")
                 status = .invalid(.revoked)
                 if wasUsable { onLockedOut?() }
             }
@@ -165,17 +159,20 @@ final class LicenseManager {
 
     // MARK: - Persistence
 
-    private func persist(key: String, instanceId: String?, validatedAt: Date?, cached: String) {
-        Keychain.set(key, for: Account.key)
-        if let instanceId { Keychain.set(instanceId, for: Account.instance) }
-        if let validatedAt {
-            Keychain.set(Self.isoFormatter.string(from: validatedAt), for: Account.validatedAt)
-        }
-        Keychain.set(cached, for: Account.cachedStatus)
+    /// Writes the single license record to disk, bound to this Mac. No-op if there
+    /// is no key (nothing to persist).
+    private func persist(status: String) {
+        guard let key = licenseKey else { return }
+        LicenseStore.save(LicenseRecord(
+            licenseKey: key,
+            instanceId: instanceId,
+            deviceUUID: DeviceIdentity.hardwareUUID,
+            lastValidatedAt: lastValidatedAt,
+            status: status))
     }
 
     private func clearAndLock() {
-        Keychain.deleteAll()
+        LicenseStore.clear()
         licenseKey = nil
         instanceId = nil
         lastValidatedAt = nil
