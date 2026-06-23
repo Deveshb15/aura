@@ -3,6 +3,20 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>2.2.5</title>
+            <pubDate>Tue, 23 Jun 2026 11:20:41 +0530</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>23</sparkle:version>
+            <sparkle:shortVersionString>2.2.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>A smoother light switch</h2>
+<ul>
+  <li><b>Theme changes now fade.</b> Switching between the light and dark themes cross-fades smoothly — like a light dimming up or down — instead of snapping all at once.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.5/Carpet-2.2.5.dmg" length="17958822" type="application/octet-stream" sparkle:edSignature="MEcUXpn+j9h7btiX3pxslrD+0FpRruWtIKF8OktMDSeYBn2h40yUlg4yhvo3oup9ECKDWGP8gm/X8/iVS8r9AQ=="/>
+        </item>
+        <item>
             <title>2.2.4</title>
             <pubDate>Tue, 23 Jun 2026 10:41:38 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -59,22 +73,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.1/Carpet-2.2.1.dmg" length="17890126" type="application/octet-stream" sparkle:edSignature="FwhA0wuZfXnidsHqpGcRuIQ/jjDa1Bf+hbmDnQHKctZV+3ouBCgdvyynTYRmV6AooIhAtZhbbSOyc//nuSauBg=="/>
-        </item>
-        <item>
-            <title>2.2.0</title>
-            <pubDate>Mon, 15 Jun 2026 15:14:24 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>18</sparkle:version>
-            <sparkle:shortVersionString>2.2.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>A fresh welcome, launch at login, and a calmer Carpet</h2>
-<ul>
-  <li><b>Reworked onboarding.</b> A new four-screen intro walks you through the loop — drop things in, ask for them back, and find them already sorted — with all-new artwork drawn straight from the notch.</li>
-  <li><b>Launch at login.</b> Carpet can now start automatically when you log in to your Mac, so your vault is always a glance away. Turn it on during setup or anytime in Settings.</li>
-  <li><b>Smoother and steadier.</b> Fixed the image-memory pressure that could freeze the app, and moved heavy work off the main thread so the notch and library stay responsive.</li>
-</ul>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v2.2.0/Carpet-2.2.0.dmg" length="17882544" type="application/octet-stream" sparkle:edSignature="f3IF/DQYReGAS0cljSZkMrsRhuHLbs7HKGX5cPh/ezRqOHQzPE/E7XQ+qIRfIlDPMqMlnsaDIwUAVciUh2XhBQ=="/>
         </item>
     </channel>
 </rss>
