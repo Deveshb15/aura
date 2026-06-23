@@ -24,6 +24,17 @@ struct NotchRootView: View {
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // Drop target spans the whole notch window, not just the (collapsed-size)
+        // panel, so a drag is caught over the generous region the window's
+        // hitTest now lets drags through (see `NotchContainerView.dropRect`).
+        // Entering it flips `isTargeted` → springs the notch open → the drop
+        // lands on the expanded surface.
+        .onDrop(of: DropReceiver.acceptedTypes, isTargeted: dropBinding) { providers in
+            DropReceiver.handle(providers) { candidate in
+                Task { await dataStore.save(candidate) }
+            }
+            return true
+        }
     }
 
     private var styledPanel: some View {
@@ -37,14 +48,9 @@ struct NotchRootView: View {
             // a hair slower so the grow paces with the card blooming inside it.
             .animation(.spring(response: 0.4, dampingFraction: 1.0), value: state.pending == nil)
             .animation(.spring(response: 0.5, dampingFraction: 0.86), value: state.mode)
-            .onDrop(of: DropReceiver.acceptedTypes, isTargeted: dropBinding) { providers in
-                DropReceiver.handle(providers) { candidate in
-                    Task { await dataStore.save(candidate) }
-                }
-                return true
-            }
             // Click the notch / its empty chrome (e.g. the "Aura" header) to open
             // the library. The card's Keep / ✕ buttons handle their own taps first.
+            // (Drag-and-drop is handled one level up, on the full-window view.)
             .onTapGesture { onOpenLibrary() }
     }
 
@@ -87,8 +93,10 @@ struct NotchRootView: View {
                                   onAddNote: onAddNote,
                                   onOpenLibrary: onOpenLibrary)
                     .padding(.horizontal, 14)
-                    .padding(.top, 8)
-                    .padding(.bottom, 12)
+                    .padding(.vertical, 10)
+                    // Center vertically below the notch so the gap above the
+                    // header matches the gap below the Open App button.
+                    .frame(maxHeight: .infinity, alignment: .center)
                     .transition(.opacity)
             }
         }

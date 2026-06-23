@@ -68,6 +68,7 @@ final class NotchController {
         let panel = NotchPanel(contentRect: frame)
         let container = NotchContainerView(frame: NSRect(origin: .zero, size: frame.size))
         container.interactiveRect = geometry.interactiveRect(for: .collapsed)
+        container.dropRect = geometry.dropCatchRect
 
         state.collapsedSize = geometry.collapsedSize
 
@@ -171,6 +172,7 @@ final class NotchController {
             : state.mode == .compose  ? .compose
             : .collapsed
         container?.interactiveRect = geometry.interactiveRect(for: mode)
+        container?.dropRect = geometry.dropCatchRect
     }
 
     // MARK: - Mouse monitoring (hover detection)

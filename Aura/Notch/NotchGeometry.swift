@@ -23,7 +23,7 @@ struct NotchGeometry {
     // Fixed panel sizes (the window itself is a constant full-width strip).
     static let windowHeight: CGFloat = 420
     static let expandedWidth: CGFloat = 560
-    static let expandedHeight: CGFloat = 204
+    static let expandedHeight: CGFloat = 220
     /// The peeking "keep this?" card auto-shown when something is copied.
     static let nudgeWidth: CGFloat = 360
     static let nudgeHeight: CGFloat = 76
@@ -136,6 +136,21 @@ struct NotchGeometry {
     /// detect outside-clicks that should dismiss the composer.
     var composeRect: NSRect {
         globalRect(width: Self.composeWidth + 24, height: notchHeight + Self.composeHeight + 12)
+    }
+
+    /// Generous DRAG catch zone in the container VIEW's coordinates (top-pinned,
+    /// same convention as `interactiveRect(for:)`). A drag entering it reaches
+    /// SwiftUI's `.onDrop`, which springs the notch open; sized to cover the notch
+    /// plus the full area the panel expands into, so a drop anywhere on the open
+    /// panel lands. Constant across modes — geometry only.
+    var dropCatchRect: CGRect {
+        let size = CGSize(width: max(Self.expandedWidth, notchWidth) + 40,
+                          height: notchHeight + Self.expandedHeight + 40)
+        let viewWidth = screen.frame.width
+        return CGRect(x: (viewWidth - size.width) / 2,
+                      y: Self.windowHeight - size.height,
+                      width: size.width,
+                      height: size.height)
     }
 
     /// The interactive rect in the container VIEW's coordinates (bottom-left
