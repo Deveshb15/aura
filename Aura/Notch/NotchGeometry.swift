@@ -62,13 +62,14 @@ struct NotchGeometry {
     }
 
     /// Builds geometry for a specific screen: a real notch (from `safeAreaInsets`
-    /// / auxiliary areas) when the display has one, or a 180×32 top-center pill
-    /// fallback when it doesn't.
+    /// / auxiliary areas) when the display has one, or a 180×24 top-center pill
+    /// fallback when it doesn't. 24pt matches the external-display menu-bar height
+    /// so the faked notch sits flush within the menu bar instead of bulging below.
     private static func make(for screen: NSScreen) -> NotchGeometry {
         lastScreen = screen
         let topInset = screen.safeAreaInsets.top
         let hasNotch = topInset > 0
-        let height = hasNotch ? topInset : 32
+        let height = hasNotch ? topInset : 24
 
         var width: CGFloat = hasNotch ? 200 : 180
         if hasNotch,

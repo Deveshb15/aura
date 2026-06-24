@@ -33,7 +33,7 @@ final class NotchStateModel {
 
     /// The collapsed panel size (≈ the physical notch), kept in sync by the
     /// controller so the SwiftUI panel can size itself reactively.
-    var collapsedSize: CGSize = CGSize(width: 200, height: 32)
+    var collapsedSize: CGSize = CGSize(width: 200, height: 24)
 }
 
 /// A clipboard capture awaiting "keep".
