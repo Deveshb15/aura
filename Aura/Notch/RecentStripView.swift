@@ -48,13 +48,13 @@ struct NotchExpandedView: View {
     /// the implicit "click the notch chrome to open" gesture.
     private var openAppButton: some View {
         Button(action: onOpenLibrary) {
-            HStack(spacing: 3) {
-                Image(systemName: "arrow.up.forward.app").font(.system(size: 10, weight: .semibold))
-                Text("Open App").font(.system(size: 10.5, weight: .semibold))
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.up.forward.app").font(.system(size: 12, weight: .semibold))
+                Text("Open App").font(.system(size: 13, weight: .semibold))
             }
             .foregroundStyle(AuraTheme.textSecondary)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 4)
+            .padding(.horizontal, 13)
+            .padding(.vertical, 6)
             .background(AuraTheme.fill, in: Capsule())
             .overlay(Capsule().strokeBorder(AuraTheme.hairline))
         }

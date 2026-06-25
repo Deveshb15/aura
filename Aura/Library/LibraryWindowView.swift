@@ -201,9 +201,9 @@ struct LibraryWindowView: View {
     // behind it whenever the query is empty. Typing live-filters the grid; Return
     // streams an AI answer (see `askMemory`).
     @ViewBuilder private var searchBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 14) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 22, weight: .medium))
                 .foregroundStyle(AuraTheme.textSecondary)
             ZStack(alignment: .leading) {
                 if query.isEmpty {
@@ -218,24 +218,24 @@ struct LibraryWindowView: View {
                     .focused($searchFocused)
                     .onSubmit { askMemory() }
             }
-            .font(.system(size: 15))
+            .font(.system(size: 22))
             .lineLimit(1)
             if !query.isEmpty {
                 Button { query = ""; searchFocused = true } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 14))
+                        .font(.system(size: 19))
                         .foregroundStyle(AuraTheme.textTertiary)
                 }
                 .buttonStyle(.plain)
                 .help("Clear")
             }
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 13)
-        .frame(maxWidth: 560)
+        .padding(.horizontal, 24)
+        .padding(.vertical, 18)
+        .frame(maxWidth: 680)
         .background(Capsule().fill(AuraTheme.surface))
         .overlay(Capsule().strokeBorder(AuraTheme.hairline))
-        .shadow(color: AuraTheme.shadow, radius: 20, y: 8)
+        .shadow(color: AuraTheme.shadow, radius: 24, y: 10)
         .padding(.horizontal, 40)
         .onAppear { searchFocused = true }
     }
