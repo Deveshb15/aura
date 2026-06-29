@@ -3,6 +3,20 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>3.3.1</title>
+            <pubDate>Mon, 29 Jun 2026 14:42:18 +0100</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>31</sparkle:version>
+            <sparkle:shortVersionString>3.3.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Carpet 3.3.1</h2>
+<ul>
+  <li><strong>Fixed:</strong> the footer on a saved text note (source + time) could occasionally render upside-down in the library. Notes now display as lightweight text and only load the full editor when you click to edit — so the layout can't flip, and there are fewer heavy editors in memory.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.3.1/Carpet-3.3.1.dmg" length="18231830" type="application/octet-stream" sparkle:edSignature="sHoGf7bcuUp+Gbd0AcMlqkzBjuR/wuTsjCYskk9n6UQ171CXj5GrKashdWFqpQrhSH/UagZ6ikmqtYXEPfReAA=="/>
+        </item>
+        <item>
             <title>3.3.0</title>
             <pubDate>Mon, 29 Jun 2026 12:32:56 +0100</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -60,15 +74,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.1.0/Carpet-3.1.0.dmg" length="18177889" type="application/octet-stream" sparkle:edSignature="7ozp4VXlpeaVtSyyXhLC4bdtrLwwvNLpnh/PMUeZzh/WRJf9FcDg2vkmjsNhbqJfusY9DEUc/KDOA8+uEtb4Dg=="/>
-        </item>
-        <item>
-            <title>3.0.1</title>
-            <pubDate>Tue, 23 Jun 2026 21:26:31 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>26</sparkle:version>
-            <sparkle:shortVersionString>3.0.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.0.1/Carpet-3.0.1.dmg" length="18170332" type="application/octet-stream" sparkle:edSignature="E9kfiKK0pHf2ymEKVQ1Kuw7sRn/fzqkIJzzO/s5vW1QqxrQ9ndoq6/u0LGl1rYAbcGA9Tor6LY8e3vfLD+XEDA=="/>
         </item>
     </channel>
 </rss>
