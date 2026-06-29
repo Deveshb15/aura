@@ -329,8 +329,17 @@ struct LibraryWindowView: View {
         if filteredItems.isEmpty, composeLauncher.draft == nil {
             emptyState
         } else {
-            BentoGridView(items: filteredItems, bottomInset: 100)
+            BentoGridView(items: filteredItems, bottomInset: 100, layoutResetKey: gridLayoutKey)
         }
+    }
+
+    /// Identity of the current grid view — the selected tab plus the active search
+    /// query. Switching tabs or changing the query is a fresh layout, so the grid
+    /// re-balances and resets its scroll window when this changes (see
+    /// `BentoGridView` / `ColumnAssigner`). Captures/deletes within the same view
+    /// keep the key stable, so they stay incremental (new item → top-left).
+    private var gridLayoutKey: String {
+        "\(selectedTab.rawValue)|\(query.trimmingCharacters(in: .whitespacesAndNewlines))"
     }
 
     /// Starts an inline note draft: a transient, unsaved `.text` item shown as a

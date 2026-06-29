@@ -11,6 +11,10 @@ struct BentoGridView: View {
     /// Extra bottom padding inside the scroll content so the last row can scroll
     /// clear of the floating search pill anchored at the window's bottom edge.
     var bottomInset: CGFloat = 28
+    /// Identity of the current view (tab + search query). When it changes, the
+    /// grid re-balances its columns and resets the scroll window — a filter/search
+    /// switch is a fresh layout, not an in-place edit of the previous set.
+    var layoutResetKey: String = ""
 
     @Environment(InAppComposeLauncher.self) private var composeLauncher
     @State private var assigner = ColumnAssigner()
@@ -43,10 +47,14 @@ struct BentoGridView: View {
             let columnCount = max(2, min(5, Int(avail / 300)))
             let columnWidth = max(120, (avail - gap * CGFloat(columnCount - 1)) / CGFloat(columnCount))
             let all = itemsWithDraft
-            // Only lay out (and decode images for) the windowed slice. Masonry
-            // balances the rendered cards; the window extends on scroll.
+            // Assign columns over the FULL set (greedy shortest-column), so a
+            // capture/delete is an incremental edit of the whole grid rather than
+            // of whatever slice happens to be windowed. The window only limits how
+            // many cards are rendered; because the greedy assignment is prefix-
+            // stable, the visible cards stay balanced as the window grows on scroll.
+            let colMap = assigner.columns(for: all, columnCount: columnCount,
+                                          columnWidth: columnWidth, resetKey: layoutResetKey)
             let ordered = Array(all.prefix(visibleCount))
-            let colMap = assigner.columns(for: ordered, columnCount: columnCount, columnWidth: columnWidth)
 
             ScrollView {
                 MasonryLayout(columnCount: columnCount, columnWidth: columnWidth, gap: gap) {
@@ -71,12 +79,11 @@ struct BentoGridView: View {
                 .padding(.bottom, bottomInset)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            // Reset the window when the underlying set changes (tab switch, search
-            // results), so a deep scroll in one view doesn't carry into the next.
-            .onChange(of: items.first?.id) { _, _ in visibleCount = Self.initialWindow }
-            .onChange(of: items.count) { _, _ in
-                if items.count <= Self.initialWindow { visibleCount = Self.initialWindow }
-            }
+            // Reset the window on a view switch (tab/search), so a deep scroll in
+            // one view doesn't carry into the next. Keyed on the view identity —
+            // NOT on item changes — so capturing a new item while scrolled deep
+            // doesn't snap the scroll back to the top.
+            .onChange(of: layoutResetKey) { _, _ in visibleCount = Self.initialWindow }
         }
     }
 

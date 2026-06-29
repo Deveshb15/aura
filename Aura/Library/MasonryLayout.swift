@@ -1,16 +1,17 @@
 import SwiftUI
 
-/// Per-card height hint published by `CardView` so the masonry can pack columns
-/// without measuring image cards (which have no determinate height under a
-/// width-only proposal). Text cards are measured for real; everything else uses
-/// the aspect-correct `estimatedHeight`.
+/// Per-card height hint published by `CardView` so the masonry can pack columns.
+/// `measuresHeight` cards (text/url/color — determinate, load-independent heights)
+/// are measured for real; image/file cards can't be measured without reflowing
+/// when their async thumbnail loads, so they're placed at `estimate` (which
+/// includes the shared meta-footer — see `MasonryColumnizer`).
 struct CardHeightHint: Equatable {
     var estimate: CGFloat
-    var isText: Bool
+    var measuresHeight: Bool
 }
 
 struct CardHeightHintKey: LayoutValueKey {
-    static let defaultValue = CardHeightHint(estimate: 160, isText: false)
+    static let defaultValue = CardHeightHint(estimate: 160, measuresHeight: false)
 }
 
 /// The column each card is assigned to, published by `CardView` and computed by
@@ -71,7 +72,7 @@ struct MasonryLayout: Layout {
         hasher.combine(subviews.count)
         for subview in subviews {
             let hint = subview[CardHeightHintKey.self]
-            hasher.combine(hint.isText)
+            hasher.combine(hint.measuresHeight)
             hasher.combine(hint.estimate)
             hasher.combine(subview[CardColumnKey.self])
         }
@@ -84,11 +85,13 @@ struct MasonryLayout: Layout {
 
         for subview in subviews {
             let hint = subview[CardHeightHintKey.self]
-            // Text self-sizes; floor the measured height with the estimate so a
-            // not-yet-laid-out NSTextView can't collapse to its 20pt minimum for a
-            // frame. Non-text uses the aspect-correct estimate directly.
+            // Measurable cards (text/url/color) self-size — measure the WHOLE card
+            // (body + meta footer) and floor it with the estimate so a not-yet-
+            // laid-out NSTextView can't collapse to its 20pt minimum. Image/file
+            // can't be measured without reflowing on async thumbnail load, so they
+            // use the estimate (which already includes the meta footer) directly.
             let height: CGFloat
-            if hint.isText {
+            if hint.measuresHeight {
                 let measured = subview.sizeThatFits(
                     ProposedViewSize(width: columnWidth, height: nil)
                 ).height

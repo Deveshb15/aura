@@ -22,13 +22,16 @@ struct CardView: View {
             CardMetaFooter(item: item)
         }
             .frame(maxWidth: .infinity, alignment: .leading)
-            // Height hint for MasonryLayout: text cards self-size (measure), others
-            // use the aspect-correct estimate so the layout never measures an
-            // image card under an ambiguous width-only proposal.
+            // Height hint for MasonryLayout. Text/url/color have determinate,
+            // load-independent heights, so the layout MEASURES the whole card
+            // (body + the shared meta footer) — this is what keeps cards from
+            // overlapping. Image/file depend on an async thumbnail, so measuring
+            // would reflow on load; they use the aspect-correct estimate (which
+            // includes the meta footer) instead.
             .layoutValue(key: CardHeightHintKey.self,
                          value: CardHeightHint(
                             estimate: MasonryColumnizer.estimatedHeight(item, columnWidth: columnWidth),
-                            isText: item.itemType == .text))
+                            measuresHeight: item.itemType != .image && item.itemType != .file))
             .background(AuraTheme.surface, in: RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(AuraTheme.hairline))
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))

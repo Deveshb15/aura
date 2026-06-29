@@ -17,24 +17,33 @@ final class ColumnAssigner {
     private var columnOf: [String: Int] = [:]
     private var lastIDs: Set<String> = []
     private var lastColumnCount = 0
+    /// Identity of the logical view (tab + search query). When it changes the set
+    /// was *swapped* (a filter/search switch), not edited — so we always
+    /// re-balance, regardless of how few items happen to differ. Counting deltas
+    /// alone can't tell "switched to a tab with 3 fewer items" from "deleted 3
+    /// items," and treating the former as incremental froze survivors in their old
+    /// columns (leaving empty columns).
+    private var lastResetKey = ""
 
     /// Small add/remove deltas stay incremental (a user adding a note, the
     /// draft+save burst, a single delete); anything larger re-balances.
     private let smallDelta = 3
 
     /// Returns the id→column map for `ordered` (newest-first). Mutates internal
-    /// bookkeeping; safe to call every `body` pass.
-    func columns(for ordered: [Item], columnCount: Int, columnWidth: CGFloat) -> [String: Int] {
+    /// bookkeeping; safe to call every `body` pass. `resetKey` identifies the
+    /// current view (tab/search); a change forces a full re-balance.
+    func columns(for ordered: [Item], columnCount: Int, columnWidth: CGFloat, resetKey: String = "") -> [String: Int] {
         guard columnCount > 0 else { return [:] }
         let newIDs = Set(ordered.map(\.id))
         let additions = newIDs.subtracting(lastIDs)
         let removed = lastIDs.subtracting(newIDs)
 
         // Incremental only for a small pure-add or small pure-remove on the same
-        // set and column count. Everything else (search/tab swap, bulk import,
-        // resize, first paint) re-balances.
+        // set, column count, AND view. A view switch (search/tab swap), bulk
+        // import, resize, or first paint re-balances.
         let incremental =
             !columnOf.isEmpty &&
+            resetKey == lastResetKey &&
             columnCount == lastColumnCount &&
             ((additions.count <= smallDelta && removed.isEmpty) ||
              (removed.count <= smallDelta && additions.isEmpty))
@@ -50,6 +59,7 @@ final class ColumnAssigner {
 
         lastIDs = newIDs
         lastColumnCount = columnCount
+        lastResetKey = resetKey
         return columnOf
     }
 
