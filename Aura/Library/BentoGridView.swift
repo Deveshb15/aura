@@ -66,11 +66,7 @@ struct BentoGridView: View {
                             // down into column 0; everything else fades in). Existing
                             // cards keep identity. Transitions only play inside an
                             // animation transaction, so first paint stays instant.
-                            .transition(item.id == composeLauncher.draft?.id
-                                ? .asymmetric(
-                                    insertion: .move(edge: .top).combined(with: .opacity),
-                                    removal: .opacity)
-                                : .opacity)
+                            .transition(insertionTransition(for: item))
                             .onAppear { growWindowIfNeeded(index: index, total: all.count) }
                     }
                 }
@@ -85,6 +81,19 @@ struct BentoGridView: View {
             // doesn't snap the scroll back to the top.
             .onChange(of: layoutResetKey) { _, _ in visibleCount = Self.initialWindow }
         }
+    }
+
+    /// The insertion/removal transition for a card.
+    ///
+    /// Saved cards (including text notes, which now render as pure SwiftUI `Text`
+    /// in `TextCardView`) embed no AppKit view, so they're safe to fade in. The
+    /// ONE exception is the active draft: it mounts the live `NSTextView` editor
+    /// while you type, and SwiftUI plays an insertion transition by snapshotting
+    /// the entering view — snapshotting an `NSViewRepresentable`-hosting view
+    /// inverts its layer geometry (the footer-flip bug). So the draft gets NO
+    /// snapshot transition (it appears in place); everything else fades in.
+    private func insertionTransition(for item: Item) -> AnyTransition {
+        item.id == composeLauncher.draft?.id ? .identity : .opacity
     }
 
     /// Extends the render window as the user nears the bottom of what's shown.

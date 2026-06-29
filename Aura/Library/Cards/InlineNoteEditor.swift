@@ -17,6 +17,11 @@ struct InlineNoteEditor: NSViewRepresentable {
     var width: CGFloat
     /// When true, the editor grabs first responder once (used for a new draft).
     var autoFocus: Bool
+    /// Where the user clicked to start editing (in this view's coordinate space).
+    /// When set, the caret is placed at the nearest character once focused — so
+    /// click-to-edit lands the caret where you clicked, matching the old behavior
+    /// where the `NSTextView` was always present and received the click directly.
+    var initialCaretPoint: CGPoint? = nil
     /// Called as first-responder status flips (true = began, false = blurred).
     var onFocusChange: (Bool) -> Void
     /// Esc pressed while editing.
@@ -68,6 +73,7 @@ struct InlineNoteEditor: NSViewRepresentable {
 
         if autoFocus, !context.coordinator.didAutoFocus {
             context.coordinator.didAutoFocus = true
+            let caretPoint = initialCaretPoint
             DispatchQueue.main.async {
                 guard let window = tv.window else {
                     // Not in a window yet — let a later update retry.
@@ -75,6 +81,14 @@ struct InlineNoteEditor: NSViewRepresentable {
                     return
                 }
                 window.makeFirstResponder(tv)
+                // Place the caret where the user clicked. The display `Text` and
+                // this view share the same frame, font, width and line spacing,
+                // and the text container has zero inset/padding, so the click
+                // point maps directly into the (top-left-flipped) text view.
+                if let caretPoint {
+                    let idx = tv.characterIndexForInsertion(at: caretPoint)
+                    tv.setSelectedRange(NSRange(location: idx, length: 0))
+                }
             }
         }
     }

@@ -37,7 +37,11 @@ struct CardView: View {
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay(alignment: .topTrailing) { actionBar }
             .shadow(color: AuraTheme.shadow.opacity(hovering ? 1 : 0.5), radius: hovering ? 14 : 6, y: 4)
-            .scaleEffect(hovering ? 1.012 : 1)
+            // Text cards are the only ones that can host a live NSTextView (while
+            // being edited). A scale TRANSFORM on a card hosting an AppKit view can
+            // invert its layer geometry (the footer-flip bug), so text cards skip
+            // the hover scale — they keep the shadow lift, just not the transform.
+            .scaleEffect(item.itemType == .text ? 1 : (hovering ? 1.012 : 1))
             .animation(.easeOut(duration: 0.16), value: hovering)
             .contentShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .dragOut(item: item, assetURL: store.assetURL(for: item))

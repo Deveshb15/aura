@@ -20,25 +20,14 @@ struct TextCardView: View {
     @State private var isEditing = false
     @State private var sessionIsDraft = false
     @State private var autoFocus = false
+    /// Where the user clicked to start editing, mapped to a caret position once
+    /// the editor mounts — so click-to-edit lands the caret where you clicked.
+    @State private var pendingCaretPoint: CGPoint?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            ZStack(alignment: .topLeading) {
-                if draftText.isEmpty {
-                    Text("Write a note…")
-                        .font(.system(size: 15))
-                        .foregroundStyle(AuraTheme.textTertiary)
-                        .allowsHitTesting(false)
-                }
-                InlineNoteEditor(
-                    text: $draftText,
-                    width: max(0, contentWidth),
-                    autoFocus: autoFocus,
-                    onFocusChange: handleFocusChange,
-                    onEscape: handleEscape
-                )
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            noteBody
+                .frame(maxWidth: .infinity, alignment: .leading)
 
             if let link = item.linkURL {
                 LinkEmbedView(item: item, url: link, heroURL: heroURL, faviconURL: faviconURL)
@@ -58,14 +47,67 @@ struct TextCardView: View {
         }
     }
 
+    /// The note body. CRITICAL: when NOT editing this is a pure-SwiftUI `Text`
+    /// with NO embedded AppKit view. A live `NSTextView` (the editor) inside a
+    /// card is what let the grid's transforms/animations invert the card's layer
+    /// geometry and draw the footer upside-down; a card with no AppKit view can't
+    /// be flipped by any transform. The heavyweight `InlineNoteEditor` is mounted
+    /// ONLY while this card is actively being edited (a click, or a new draft).
+    @ViewBuilder private var noteBody: some View {
+        if isEditing {
+            ZStack(alignment: .topLeading) {
+                if draftText.isEmpty {
+                    Text("Write a note…")
+                        .font(.system(size: 15))
+                        .foregroundStyle(AuraTheme.textTertiary)
+                        .allowsHitTesting(false)
+                }
+                InlineNoteEditor(
+                    text: $draftText,
+                    width: max(0, contentWidth),
+                    autoFocus: autoFocus,
+                    initialCaretPoint: pendingCaretPoint,
+                    onFocusChange: handleFocusChange,
+                    onEscape: handleEscape
+                )
+            }
+        } else {
+            // Display the note body. Metrics match the editor exactly (size 15,
+            // textPrimary, 2pt line spacing) so swapping to edit mode doesn't
+            // shift the text. A click maps to a caret position via `beginEditing`.
+            Text(draftText)
+                .font(.system(size: 15))
+                .foregroundStyle(AuraTheme.textPrimary)
+                .lineSpacing(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onEnded { value in beginEditing(at: value.location) }
+                )
+        }
+    }
+
+    /// Enters edit mode at the clicked point: records the caret location and
+    /// mounts + focuses the editor (which maps the point to a caret offset).
+    private func beginEditing(at point: CGPoint) {
+        pendingCaretPoint = point
+        autoFocus = true
+        isEditing = true
+    }
+
     // MARK: - Editing lifecycle
 
     private func initialSync() {
         let text = item.textContent ?? ""
         draftText = text
         originalText = text
+        // A brand-new draft opens straight into edit mode (mount + focus the
+        // editor), so there's no display-Text flash before the caret appears.
         if composeLauncher.autofocusItemID == item.id {
             autoFocus = true
+            isEditing = true
             composeLauncher.autofocusItemID = nil
         }
     }
