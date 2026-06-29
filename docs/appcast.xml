@@ -3,6 +3,24 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>3.3.0</title>
+            <pubDate>Mon, 29 Jun 2026 12:32:56 +0100</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>30</sparkle:version>
+            <sparkle:shortVersionString>3.3.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Carpet 3.3.0 — stability &amp; memory</h2>
+<p>A reliability-focused release that tackles the high-RAM and occasional-crash reports.</p>
+<ul>
+  <li><strong>Lower memory use.</strong> Screenshots and previews are now decoded at a downsampled size (OCR, thumbnails, link images), and image work happens off the main thread — so big captures no longer spike RAM or stall the UI.</li>
+  <li><strong>Survives a damaged library.</strong> If the data file is corrupted (e.g. after a hard shutdown), Carpet now recovers and keeps running instead of failing to launch. Your saved files on disk are safe.</li>
+  <li><strong>Leaner under load.</strong> The library grid renders on demand as you scroll, the search index has a memory ceiling, and network fetches are size-capped.</li>
+  <li><strong>Grid fixes.</strong> Switching filters now re-balances the layout correctly, and cards no longer overlap.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.3.0/Carpet-3.3.0.dmg" length="18221716" type="application/octet-stream" sparkle:edSignature="zIHxUoxjSpi4+M61zGsjVkUQa1SkxnBRA3qKA/anFQoequeNhbFVPeTh8X/78PCXdM0+4TL3Z85f4MmD8Tp6BA=="/>
+        </item>
+        <item>
             <title>3.2.1</title>
             <pubDate>Thu, 25 Jun 2026 11:06:59 +0530</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -51,15 +69,6 @@
             <sparkle:shortVersionString>3.0.1</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.0.1/Carpet-3.0.1.dmg" length="18170332" type="application/octet-stream" sparkle:edSignature="E9kfiKK0pHf2ymEKVQ1Kuw7sRn/fzqkIJzzO/s5vW1QqxrQ9ndoq6/u0LGl1rYAbcGA9Tor6LY8e3vfLD+XEDA=="/>
-        </item>
-        <item>
-            <title>3.0.0</title>
-            <pubDate>Tue, 23 Jun 2026 19:44:20 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>25</sparkle:version>
-            <sparkle:shortVersionString>3.0.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.0.0/Carpet-3.0.0.dmg" length="18166172" type="application/octet-stream" sparkle:edSignature="XswFf1JsYamrUJmHouifQjX7qH2P8417/NDWXG7X/F/pPvl2cubv0EiPeKr20zpYYujy8wOpl10ZfDxh7IRWCg=="/>
         </item>
     </channel>
 </rss>
