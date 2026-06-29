@@ -15,7 +15,8 @@ struct URLCardView: View {
     // MARK: - Hero
 
     @ViewBuilder private var hero: some View {
-        if let image = DiskImage.load(heroURL) {
+        let heroURL = heroURL
+        AsyncCardImage(id: heroURL?.path ?? "none-\(item.id)", load: { DiskImage.load(heroURL) }) { image in
             ZStack(alignment: .bottomTrailing) {
                 Image(nsImage: image)
                     .resizable()
@@ -25,7 +26,7 @@ struct URLCardView: View {
                     .clipped()
                 if item.subtype.isVideo { playBadge }
             }
-        } else {
+        } placeholder: {
             ZStack {
                 LinearGradient(colors: gradient, startPoint: .topLeading, endPoint: .bottomTrailing)
                 Image(systemName: icon)
@@ -67,13 +68,14 @@ struct URLCardView: View {
     }
 
     @ViewBuilder private var faviconView: some View {
-        if let favicon = DiskImage.load(faviconURL) {
+        let faviconURL = faviconURL
+        AsyncCardImage(id: faviconURL?.path ?? "none-\(item.id)", load: { DiskImage.load(faviconURL) }) { favicon in
             Image(nsImage: favicon)
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 16, height: 16)
                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-        } else {
+        } placeholder: {
             Image(systemName: icon)
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)

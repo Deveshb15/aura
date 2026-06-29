@@ -15,10 +15,12 @@ final class NotchController {
     /// Called when the user clicks the notch / "Aura" header to open the library.
     var onOpenLibrary: (() -> Void)?
 
-    /// Set at launch (a display always exists then) and only ever replaced with
-    /// a non-nil recompute, so it's effectively always present — an IUO avoids
-    /// threading optionals through its ~20 call sites. See `screensChanged`.
-    private var geometry: NotchGeometry!
+    /// The current notch geometry. Optional because no display may be resolvable
+    /// at launch — a Mac can boot with the lid closed or an external still warming
+    /// up (now common since launch-at-login is auto-enabled). `show()` defers
+    /// until a screen exists; every access is guarded so a momentary empty-screens
+    /// state can never crash. Only ever replaced with a non-nil recompute.
+    private var geometry: NotchGeometry?
     private var panel: NotchPanel?
     private var container: NotchContainerView?
     private var hostingView: NSHostingView<NotchRootView>?
@@ -33,6 +35,9 @@ final class NotchController {
     private var composeKeyMonitor: Any?
     private var composeClickMonitor: Any?
     private var composeCollapseWork: DispatchWorkItem?
+    /// One-shot observer that retries `show()` once a display appears, when the
+    /// app activated with no resolvable screen (e.g. login-launch, lid closed).
+    private var showRetryObserver: NSObjectProtocol?
     /// The app that was frontmost when compose opened, so focus can be returned.
     private var previousApp: NSRunningApplication?
 
@@ -61,9 +66,18 @@ final class NotchController {
         if let localMonitor { NSEvent.removeMonitor(localMonitor) }
         if let composeKeyMonitor { NSEvent.removeMonitor(composeKeyMonitor) }
         if let composeClickMonitor { NSEvent.removeMonitor(composeClickMonitor) }
+        if let showRetryObserver { NotificationCenter.default.removeObserver(showRetryObserver) }
     }
 
     func show() {
+        // No display resolvable yet (login-launch with the lid closed, external
+        // still waking). Defer: retry once a screen appears, instead of crashing.
+        guard let geometry = self.geometry ?? NotchGeometry.current() else {
+            scheduleShowRetry()
+            return
+        }
+        self.geometry = geometry
+
         let frame = geometry.windowFrame
         let panel = NotchPanel(contentRect: frame)
         let container = NotchContainerView(frame: NSRect(origin: .zero, size: frame.size))
@@ -128,11 +142,36 @@ final class NotchController {
         if let localMonitor { NSEvent.removeMonitor(localMonitor) }
         globalMonitor = nil
         localMonitor = nil
+        if let showRetryObserver {
+            NotificationCenter.default.removeObserver(showRetryObserver)
+            self.showRetryObserver = nil
+        }
 
         panel?.orderOut(nil)
         panel = nil
         container = nil
         hostingView = nil
+    }
+
+    /// Wait for a usable display, then build the notch. Installs a one-shot
+    /// screen-parameter observer (idempotent) so a Mac that launched with no
+    /// resolvable screen still brings the notch up the moment one appears.
+    private func scheduleShowRetry() {
+        guard showRetryObserver == nil else { return }
+        showRetryObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, NotchGeometry.current() != nil else { return }
+                if let obs = self.showRetryObserver {
+                    NotificationCenter.default.removeObserver(obs)
+                    self.showRetryObserver = nil
+                }
+                self.show()
+            }
+        }
     }
 
     /// Display reconfiguration (plug/unplug, lid open/close, resolution change)
@@ -161,18 +200,18 @@ final class NotchController {
     /// whatever mode is currently live so an open panel relocates intact.
     private func relocate(to updated: NotchGeometry) {
         geometry = updated
-        panel?.setFrame(geometry.windowFrame, display: true)
+        panel?.setFrame(updated.windowFrame, display: true)
         panel?.orderFrontRegardless()
         // Re-ordering can drop the forced dark appearance; pin it again so the
         // notch stays dark on the new screen.
         forceDarkAppearance()
-        state.collapsedSize = geometry.collapsedSize
+        state.collapsedSize = updated.collapsedSize
         let mode: NotchInteractiveMode = state.pending != nil ? .nudge
             : state.mode == .expanded ? .expanded
             : state.mode == .compose  ? .compose
             : .collapsed
-        container?.interactiveRect = geometry.interactiveRect(for: mode)
-        container?.dropRect = geometry.dropCatchRect
+        container?.interactiveRect = updated.interactiveRect(for: mode)
+        container?.dropRect = updated.dropCatchRect
     }
 
     // MARK: - Mouse monitoring (hover detection)
@@ -191,6 +230,8 @@ final class NotchController {
     private func handleMouseMoved() {
         // While composing, hover-based expand/collapse is suspended.
         guard state.mode != .compose else { return }
+        // No geometry means the panel isn't shown yet; nothing to hover-test.
+        guard let geometry else { return }
         let location = NSEvent.mouseLocation
         // Follow the active display: when idle, keep the collapsed notch on the
         // screen the cursor is on (faked top-center pill on non-notch externals).
@@ -241,7 +282,7 @@ final class NotchController {
             guard let self else { return }
             self.expandWorkItem = nil
             // Re-check the cursor is still in the notch after the dwell.
-            if self.geometry.notchRect.contains(NSEvent.mouseLocation) {
+            if self.geometry?.notchRect.contains(NSEvent.mouseLocation) == true {
                 self.expand()
             }
         }
@@ -265,7 +306,7 @@ final class NotchController {
         // Instantly hide card content before switching to expanded — no fade needed
         // since the whole panel is about to change shape anyway.
         state.showPendingContent = false
-        container?.interactiveRect = geometry.interactiveRect(for: .expanded)
+        if let geometry { container?.interactiveRect = geometry.interactiveRect(for: .expanded) }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
             state.pending = nil
             state.mode = .expanded
@@ -277,7 +318,7 @@ final class NotchController {
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.collapseWorkItem = nil
-            if !self.geometry.openedRect.contains(NSEvent.mouseLocation) {
+            if !(self.geometry?.openedRect.contains(NSEvent.mouseLocation) ?? false) {
                 self.collapse()
             }
         }
@@ -293,7 +334,7 @@ final class NotchController {
     private func collapse() {
         // Don't collapse out from under a pending keep card or while composing.
         guard state.pending == nil, state.mode != .compose else { return }
-        container?.interactiveRect = geometry.interactiveRect(for: .collapsed)
+        if let geometry { container?.interactiveRect = geometry.interactiveRect(for: .collapsed) }
         withAnimation(.spring(response: 0.5, dampingFraction: 0.86)) {
             state.mode = .collapsed
             state.isDropTargeted = false
@@ -311,7 +352,7 @@ final class NotchController {
         cancelExpand()
         cancelCollapse()
         let nudge = NudgeItem(candidate: candidate, preview: Self.preview(for: candidate))
-        container?.interactiveRect = geometry.interactiveRect(for: .nudge)
+        if let geometry { container?.interactiveRect = geometry.interactiveRect(for: .nudge) }
         NSHapticFeedbackManager.defaultPerformer.perform(.generic, performanceTime: .now)
         // Step 1: panel expands (content invisible — view's animation modifier handles
         // the size change via state.pending == nil).
@@ -353,7 +394,9 @@ final class NotchController {
             guard let self else { return }
             // Guard against a new capture arriving during the fade window.
             guard self.state.pending?.id == dismissedId else { return }
-            self.container?.interactiveRect = self.geometry.interactiveRect(for: .collapsed)
+            if let geometry = self.geometry {
+                self.container?.interactiveRect = geometry.interactiveRect(for: .collapsed)
+            }
             self.state.pending = nil
             self.state.mode = .collapsed
         }
@@ -395,7 +438,7 @@ final class NotchController {
 
         state.composeText = ""
         state.showComposeContent = false
-        container?.interactiveRect = geometry.interactiveRect(for: .compose)
+        if let geometry { container?.interactiveRect = geometry.interactiveRect(for: .compose) }
 
         // Activate so the panel actually receives keyboard input (a background
         // accessory app's key panel otherwise never gets keystrokes). Remember
@@ -426,7 +469,9 @@ final class NotchController {
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
             self.composeCollapseWork = nil
-            self.container?.interactiveRect = self.geometry.interactiveRect(for: .collapsed)
+            if let geometry = self.geometry {
+                self.container?.interactiveRect = geometry.interactiveRect(for: .collapsed)
+            }
             self.state.mode = .collapsed    // phase 2: panel collapses
             self.panel?.acceptsKeyboard = false
             // Return focus to the app the user was in before composing. Set
@@ -481,7 +526,7 @@ final class NotchController {
             matching: [.leftMouseDown, .rightMouseDown]
         ) { [weak self] _ in
             guard let self, self.state.mode == .compose else { return }
-            if !self.geometry.composeRect.contains(NSEvent.mouseLocation) {
+            if !(self.geometry?.composeRect.contains(NSEvent.mouseLocation) ?? false) {
                 self.exitCompose()
             }
         }
@@ -503,8 +548,10 @@ final class NotchController {
             // image: a 360 pt card never needs a multi-MB bitmap, and the full
             // decode — held for the ~2.5 s nudge lifetime — was a needless memory
             // spike on large screenshots.
-            let preview = ImageDownsampler.image(from: data, maxPixel: 400)?.image
-                ?? NSImage(data: data) ?? NSImage()
+            // Never fall back to a full-resolution `NSImage(data:)` — for a
+            // throwaway 360 pt card that would hold a multi-MB bitmap for the
+            // nudge's ~2.5 s lifetime. An empty image just shows the placeholder.
+            let preview = ImageDownsampler.image(from: data, maxPixel: 400)?.image ?? NSImage()
             return .image(preview)
         case .file(let url): return .file(url.lastPathComponent)
         case .color(let hex): return .color(hex)

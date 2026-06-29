@@ -1,8 +1,15 @@
 import Foundation
 import GRDB
+import os
 
 /// Opens the on-disk SQLite database and owns the schema migrations.
 enum AppDatabase {
+    private static let log = Logger(subsystem: "app.captureaura", category: "database")
+
+    /// Set when a corrupt store had to be moved aside and recreated on open, so
+    /// the UI can show a one-time "had to reset the library" notice. Cleared by
+    /// the consumer (see `LibraryWindowView`).
+    static let didRecoverDefaultsKey = "didRecoverCorruptDatabase"
 
     /// `~/Library/Application Support/Aura/` (real data). DEBUG builds use a
     /// separate `Aura-Debug` vault so development — and the DEBUG-only
@@ -26,6 +33,26 @@ enum AppDatabase {
 
     static func open() throws -> DatabasePool {
         let dbURL = try supportDirectory().appendingPathComponent("aura.sqlite")
+        do {
+            return try openPool(at: dbURL)
+        } catch {
+            // The store is unopenable — typically a corrupt file or a truncated
+            // `-wal`/`-shm` sidecar after a hard crash / force-quit. Crashing
+            // here would mean crashing on EVERY launch (an unrecoverable boot
+            // loop). Instead, move the bad files aside and start fresh: on-disk
+            // originals under Assets/ survive, and the search/embedding indexes
+            // rebuild via the launch backfills.
+            log.error("DB open failed (\(String(describing: error), privacy: .public)); moving store aside and recreating.")
+            try moveAsideCorruptStore(at: dbURL)
+            let pool = try openPool(at: dbURL)
+            UserDefaults.standard.set(true, forKey: didRecoverDefaultsKey)
+            return pool
+        }
+    }
+
+    /// Opens (and migrates) the pool at `dbURL`. Factored out so `open()` can
+    /// retry it after clearing a corrupt store.
+    private static func openPool(at dbURL: URL) throws -> DatabasePool {
         var config = Configuration()
         config.prepareDatabase { db in
             try db.execute(sql: "PRAGMA foreign_keys = ON")
@@ -33,6 +60,22 @@ enum AppDatabase {
         let pool = try DatabasePool(path: dbURL.path, configuration: config)
         try migrator.migrate(pool)
         return pool
+    }
+
+    /// Renames the SQLite file and its `-wal`/`-shm` sidecars out of the way
+    /// (kept, not deleted, so a corrupt vault can still be inspected/recovered
+    /// manually) so a fresh store can be created in their place.
+    private static func moveAsideCorruptStore(at dbURL: URL) throws {
+        let fm = FileManager.default
+        let stamp = Int(Date().timeIntervalSince1970)
+        for suffix in ["", "-wal", "-shm"] {
+            let src = URL(fileURLWithPath: dbURL.path + suffix)
+            guard fm.fileExists(atPath: src.path) else { continue }
+            let dst = dbURL.deletingLastPathComponent()
+                .appendingPathComponent("aura.corrupt-\(stamp).sqlite\(suffix)")
+            try? fm.removeItem(at: dst)
+            try fm.moveItem(at: src, to: dst)
+        }
     }
 
     static var migrator: DatabaseMigrator {

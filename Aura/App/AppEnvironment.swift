@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import GRDB
 import SwiftUI
+import os
 
 /// Bridges "open the library window" from AppKit (the notch) to SwiftUI's
 /// scene-based `openWindow`. A scene view (the menu-bar label) fills in `open`
@@ -100,6 +101,13 @@ final class AppEnvironment {
             self.clipboardWatcher = ClipboardWatcher()
             self.xBridge = XBookmarkBridge(dataStore: dataStore)
         } catch {
+            // `AppDatabase.open()` already self-heals a corrupt store (moves it
+            // aside, recreates), so reaching here means storage is unusable at a
+            // deeper level — no disk space, no write permission to Application
+            // Support, etc. Nothing the app can do but report and stop; log the
+            // real error first so it's diagnosable rather than a bare crash.
+            Logger(subsystem: "app.captureaura", category: "startup")
+                .fault("Storage init failed irrecoverably: \(String(describing: error), privacy: .public)")
             fatalError("Aura failed to initialize storage: \(error)")
         }
     }

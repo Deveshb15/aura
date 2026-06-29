@@ -87,6 +87,7 @@ struct LibraryWindowView: View {
         // drives an inline draft in this window.
         .onAppear {
             composeLauncher.present = { startDraft() }
+            showDatabaseRecoveryNoticeIfNeeded()
         }
         .onDisappear {
             composeLauncher.present = nil
@@ -307,6 +308,17 @@ struct LibraryWindowView: View {
         answerText = ""
         isAnswering = false
         answeredQuery = ""
+    }
+
+    /// Shows a one-time toast if the database had to be reset after corruption on
+    /// launch (see `AppDatabase.open()`), then clears the flag so it shows once.
+    private func showDatabaseRecoveryNoticeIfNeeded() {
+        guard UserDefaults.standard.bool(forKey: AppDatabase.didRecoverDefaultsKey) else { return }
+        UserDefaults.standard.set(false, forKey: AppDatabase.didRecoverDefaultsKey)
+        toasts.show(AuraToast(
+            title: "Library was reset",
+            subtitle: "Carpet recovered from a damaged data file. Your saved files on disk are safe.",
+            symbol: "exclamationmark.arrow.circlepath"))
     }
 
     // MARK: - Content

@@ -151,23 +151,26 @@ struct NotchMiniCard: View {
     @ViewBuilder private var content: some View {
         switch item.itemType {
         case .image:
-            if let data = item.thumbnail, let image = ThumbnailCache.image(id: item.id, data: data) {
+            let id = item.id, data = item.thumbnail
+            AsyncCardImage(id: id, load: { data.flatMap { ThumbnailCache.image(id: id, data: $0) } }) { image in
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
-            } else {
+            } placeholder: {
                 centeredIcon("photo", caption: nil)
             }
         case .url:
-            if let image = DiskImage.load(dataStore.fileURL(forRelativePath: item.ogImagePath)) {
+            let heroURL = dataStore.fileURL(forRelativePath: item.ogImagePath)
+            AsyncCardImage(id: heroURL?.path ?? "none-\(item.id)", load: { DiskImage.load(heroURL) }) { image in
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
-            } else {
+            } placeholder: {
                 centeredIcon(item.subtype.symbol, caption: item.host ?? "Link")
             }
         case .color:
             Color(hex: item.colorHex ?? "") ?? Color.gray
         case .file:
-            if let data = item.thumbnail, let image = ThumbnailCache.image(id: item.id, data: data) {
+            let id = item.id, data = item.thumbnail
+            AsyncCardImage(id: id, load: { data.flatMap { ThumbnailCache.image(id: id, data: $0) } }) { image in
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
-            } else {
+            } placeholder: {
                 centeredIcon("doc.fill", caption: item.fileName ?? "File")
             }
         case .text:

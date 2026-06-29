@@ -13,10 +13,16 @@ import os
 enum OCRService {
     private static let log = Logger(subsystem: "app.captureaura", category: "ocr")
     private static let maxCharacters = 10_000
+    /// Decode the image downsampled to this pixel ceiling before recognition.
+    /// 2048 px keeps even dense screenshots legible to Vision while turning a
+    /// 6000×4000 capture's ~96 MB full-resolution bitmap into a few MB — the
+    /// backfill OCRs up to 100 images per launch, so the full decode was a real
+    /// memory spike. Recognition accuracy is unaffected at this size.
+    private static let maxPixel: CGFloat = 2048
 
     static func recognizeText(in url: URL) -> String? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+              let cgImage = ThumbnailService.cgThumbnail(from: source, maxPixel: maxPixel) else { return nil }
 
         let request = VNRecognizeTextRequest()
         request.recognitionLevel = .accurate

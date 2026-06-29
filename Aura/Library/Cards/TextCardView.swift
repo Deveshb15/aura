@@ -132,15 +132,19 @@ private struct LinkEmbedView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let image = DiskImage.load(heroURL) {
-                ZStack(alignment: .bottomTrailing) {
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(height: 96)
-                        .frame(maxWidth: .infinity)
-                        .clipped()
-                    if item.subtype.isVideo { playBadge }
+            if let heroURL {
+                AsyncCardImage(id: heroURL.path, load: { DiskImage.load(heroURL) }) { image in
+                    ZStack(alignment: .bottomTrailing) {
+                        Image(nsImage: image)
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(height: 96)
+                            .frame(maxWidth: .infinity)
+                            .clipped()
+                        if item.subtype.isVideo { playBadge }
+                    }
+                } placeholder: {
+                    EmptyView()
                 }
             }
             HStack(alignment: .top, spacing: 8) {
@@ -174,13 +178,14 @@ private struct LinkEmbedView: View {
     }
 
     @ViewBuilder private var faviconView: some View {
-        if let favicon = DiskImage.load(faviconURL) {
+        let faviconURL = faviconURL
+        AsyncCardImage(id: faviconURL?.path ?? "none-\(item.id)", load: { DiskImage.load(faviconURL) }) { favicon in
             Image(nsImage: favicon)
                 .resizable()
                 .interpolation(.high)
                 .frame(width: 14, height: 14)
                 .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
-        } else {
+        } placeholder: {
             Image(systemName: "globe")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)

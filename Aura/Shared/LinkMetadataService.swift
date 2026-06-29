@@ -21,6 +21,13 @@ enum LinkMetadataService {
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 " +
         "(KHTML, like Gecko) Version/17.0 Safari/605.1.15"
 
+    /// Response-body ceilings. Without a cap, a hostile or broken server can
+    /// stream hundreds of MB → GB straight into RAM (then SwiftSoup parses it).
+    /// An article's readable text fits comfortably under 5 MB of HTML; preview
+    /// images / favicons under 8 MB. Mirrors `DataStore.downloadData`.
+    private static let maxHTMLBytes = 5 * 1024 * 1024
+    private static let maxImageBytes = 8 * 1024 * 1024
+
     static func fetch(url: URL) async -> LinkMetadata {
         switch URLClassifier.subtype(for: url) {
         case .youtube:
@@ -126,9 +133,32 @@ enum LinkMetadataService {
         var request = URLRequest(url: url)
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 10
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              (response as? HTTPURLResponse).map({ (200..<400).contains($0.statusCode) }) ?? true else { return nil }
+        guard let data = await boundedData(for: request, maxBytes: maxHTMLBytes) else { return nil }
         return String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1)
+    }
+
+    /// Fetches a response body but aborts the moment it exceeds `maxBytes`, so an
+    /// unbounded/hostile response can never buffer into memory. Honors an
+    /// advertised oversize `Content-Length` up front, then enforces the cap while
+    /// streaming for servers that don't send one. Returns nil on HTTP error,
+    /// oversize, or transport failure.
+    private static func boundedData(for request: URLRequest, maxBytes: Int) async -> Data? {
+        do {
+            let (bytes, response) = try await URLSession.shared.bytes(for: request)
+            if let http = response as? HTTPURLResponse, !(200..<400).contains(http.statusCode) {
+                return nil
+            }
+            if response.expectedContentLength > Int64(maxBytes) { return nil }
+            var data = Data()
+            data.reserveCapacity(min(maxBytes, 1 << 20))
+            for try await byte in bytes {
+                data.append(byte)
+                if data.count > maxBytes { return nil }
+            }
+            return data
+        } catch {
+            return nil
+        }
     }
 
     private static func fetchFavicon(for url: URL, html: String) async -> Data? {
@@ -150,8 +180,7 @@ enum LinkMetadataService {
         var request = URLRequest(url: url)
         request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         request.timeoutInterval = 10
-        guard let (data, response) = try? await URLSession.shared.data(for: request),
-              (response as? HTTPURLResponse).map({ (200..<300).contains($0.statusCode) }) ?? true,
+        guard let data = await boundedData(for: request, maxBytes: maxImageBytes),
               let source = CGImageSourceCreateWithData(data as CFData, nil),
               let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any] else { return nil }
         let width = (props[kCGImagePropertyPixelWidth] as? CGFloat) ?? 0

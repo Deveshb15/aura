@@ -62,6 +62,24 @@ struct Item: Codable, Identifiable, Equatable, FetchableRecord, PersistableRecor
 }
 
 extension Item {
+    /// Columns fetched for the live library / notch observation — every column
+    /// the UI renders, but NOT the heavy `extractedText` (image OCR, article
+    /// bodies, document text). Search reads that straight from the DB
+    /// (`HybridSearch`) and the grid never displays it, so carrying it in the
+    /// 400-row reactive array — re-deserialized on every write — was pure waste.
+    /// Omitted from the selection, `extractedText` decodes back to nil, which the
+    /// display path is fine with. Keep in sync with the stored properties above.
+    static let liveColumns: [Column] = [
+        Column("id"), Column("type"), Column("createdAt"), Column("updatedAt"),
+        Column("textContent"), Column("title"), Column("urlSubtype"),
+        Column("sourceApp"), Column("sourceURL"), Column("assetPath"),
+        Column("fileName"), Column("uti"), Column("byteSize"),
+        Column("thumbnail"), Column("thumbWidth"), Column("thumbHeight"),
+        Column("ogTitle"), Column("ogDescription"), Column("ogImagePath"),
+        Column("faviconPath"), Column("host"), Column("colorHex"),
+        Column("collectionId"),
+    ]
+
     var itemType: ItemType { ItemType(rawValue: type) ?? .text }
     var subtype: URLSubtype { URLSubtype(rawValue: urlSubtype ?? "") ?? .generic }
 

@@ -5,13 +5,21 @@ struct FileCardView: View {
     let item: Item
 
     var body: some View {
-        if let data = item.thumbnail, let image = ThumbnailCache.image(id: item.id, data: data) {
-            VStack(alignment: .leading, spacing: 0) {
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(maxWidth: .infinity)
-                footer
+        let id = item.id
+        let data = item.thumbnail
+        // No inline thumbnail → render the generic icon card directly (no async
+        // load needed). Otherwise decode the preview off the main thread.
+        if let data {
+            AsyncCardImage(id: id, load: { ThumbnailCache.image(id: id, data: data) }) { image in
+                VStack(alignment: .leading, spacing: 0) {
+                    Image(nsImage: image)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: .infinity)
+                    footer
+                }
+            } placeholder: {
+                iconCard
             }
         } else {
             iconCard

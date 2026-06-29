@@ -46,8 +46,12 @@ final class DataStore {
         self.assetStore = assetStore
         self.semanticIndex = SemanticIndex(dbPool: dbPool)
         startObserving()
-        Task { [weak self] in
+        // Backfills run at utility priority and only after a short grace period,
+        // so the library's first paint isn't competing with enrichment CPU on
+        // launch. Each backfill also paces itself item-by-item (see the loops).
+        Task(priority: .utility) { [weak self] in
             await self?.semanticIndex.reload()
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
             await self?.backfillPending()
             await self?.backfillSearchIndex()
             await self?.backfillStaleEnrichment()
@@ -56,7 +60,10 @@ final class DataStore {
 
     private func startObserving() {
         let items = ValueObservation.tracking { db in
-            try Item.order(Column("createdAt").desc).limit(400).fetchAll(db)
+            try Item.select(Item.liveColumns)
+                .order(Column("createdAt").desc)
+                .limit(400)
+                .fetchAll(db)
         }
         itemsCancellable = items.start(
             in: dbPool,
@@ -431,10 +438,16 @@ final class DataStore {
     /// get re-enriched once by the matching backfill (stamped in sourceHash).
     static let enrichVersion = "enrich-v3"   // v3 = + document text (Word/RTF/ODT/text/code)
 
+    /// Hard ceiling on stored mined text. FTS5 keyword search and the 2 000-char
+    /// embedding both see the representative head; storing a whole multi-MB
+    /// article would only bloat the row (and the live item array). 16 k chars is
+    /// far more than any of those consumers read.
+    static let maxExtractedTextLength = 16_000
+
     func enrichForSearch(itemID: String) async {
         guard let item = try? await dbPool.read({ db in try Item.fetchOne(db, key: itemID) }) else { return }
 
-        let extracted = await extractText(for: item)
+        let extracted = await extractText(for: item).map { String($0.prefix(Self.maxExtractedTextLength)) }
         if let extracted, !extracted.isEmpty {
             let now = Date()
             try? await dbPool.write { db in
@@ -518,6 +531,8 @@ final class DataStore {
             case .file: await enrichFile(item)
             default: break
             }
+            // Pace the loop so a large backlog spreads out instead of spiking.
+            try? await Task.sleep(nanoseconds: 30_000_000)
         }
     }
 
@@ -541,6 +556,7 @@ final class DataStore {
             let record = EmbeddingRecord(itemId: item.id, vector: vector,
                                          model: EmbeddingService.modelIdentifier, sourceHash: nil)
             try? await dbPool.write { db in try record.save(db) }
+            try? await Task.sleep(nanoseconds: 20_000_000)
         }
         await semanticIndex.reload()
     }
@@ -566,7 +582,12 @@ final class DataStore {
                 """, arguments: [Self.enrichVersion])
         }) ?? []
         guard !stale.isEmpty else { return }
-        for id in stale { await enrichForSearch(itemID: id) }
+        for id in stale {
+            await enrichForSearch(itemID: id)
+            // OCR + classification are the heaviest per-item work; a small gap
+            // keeps the launch backfill from monopolizing CPU/ANE in one burst.
+            try? await Task.sleep(nanoseconds: 50_000_000)
+        }
         await semanticIndex.reload()
     }
 

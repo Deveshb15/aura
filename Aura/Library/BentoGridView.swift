@@ -14,6 +14,16 @@ struct BentoGridView: View {
 
     @Environment(InAppComposeLauncher.self) private var composeLauncher
     @State private var assigner = ColumnAssigner()
+    /// How many cards are currently rendered. The grid grows this window as the
+    /// user scrolls toward the bottom, so it never instantiates all (≤400) cards
+    /// — and their image decodes — up front. See `growWindowIfNeeded`.
+    @State private var visibleCount = BentoGridView.initialWindow
+
+    /// First-paint window and how much each scroll-triggered growth adds.
+    private static let initialWindow = 60
+    private static let windowStep = 40
+    /// Start growing when one of the last N rendered cards appears.
+    private static let growThreshold = 8
 
     private let outer: CGFloat = 32   // matches the hero/tab horizontal margin
     private let gap: CGFloat = 16
@@ -32,12 +42,15 @@ struct BentoGridView: View {
             let avail = max(0, geo.size.width - outer * 2)
             let columnCount = max(2, min(5, Int(avail / 300)))
             let columnWidth = max(120, (avail - gap * CGFloat(columnCount - 1)) / CGFloat(columnCount))
-            let ordered = itemsWithDraft
+            let all = itemsWithDraft
+            // Only lay out (and decode images for) the windowed slice. Masonry
+            // balances the rendered cards; the window extends on scroll.
+            let ordered = Array(all.prefix(visibleCount))
             let colMap = assigner.columns(for: ordered, columnCount: columnCount, columnWidth: columnWidth)
 
             ScrollView {
                 MasonryLayout(columnCount: columnCount, columnWidth: columnWidth, gap: gap) {
-                    ForEach(ordered) { item in
+                    ForEach(Array(ordered.enumerated()), id: \.element.id) { index, item in
                         CardView(item: item, columnWidth: columnWidth)
                             .frame(width: columnWidth)
                             .layoutValue(key: CardColumnKey.self, value: colMap[item.id] ?? 0)
@@ -50,6 +63,7 @@ struct BentoGridView: View {
                                     insertion: .move(edge: .top).combined(with: .opacity),
                                     removal: .opacity)
                                 : .opacity)
+                            .onAppear { growWindowIfNeeded(index: index, total: all.count) }
                     }
                 }
                 .padding(.horizontal, outer)
@@ -57,6 +71,18 @@ struct BentoGridView: View {
                 .padding(.bottom, bottomInset)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            // Reset the window when the underlying set changes (tab switch, search
+            // results), so a deep scroll in one view doesn't carry into the next.
+            .onChange(of: items.first?.id) { _, _ in visibleCount = Self.initialWindow }
+            .onChange(of: items.count) { _, _ in
+                if items.count <= Self.initialWindow { visibleCount = Self.initialWindow }
+            }
         }
+    }
+
+    /// Extends the render window as the user nears the bottom of what's shown.
+    private func growWindowIfNeeded(index: Int, total: Int) {
+        guard visibleCount < total, index >= visibleCount - Self.growThreshold else { return }
+        visibleCount = min(visibleCount + Self.windowStep, total)
     }
 }

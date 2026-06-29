@@ -105,7 +105,15 @@ enum ThumbnailCache {
             cache.set(image, forKey: id, cost: cost)
             return image
         }
-        // Fall back to a plain decode if ImageIO can't build a thumbnail.
+        // ImageIO couldn't build a thumbnail. Try a lower pixel ceiling before
+        // ever decoding at full resolution — a malformed-but-decodable image
+        // shouldn't drag a multi-MB bitmap into the grid cache.
+        if let (image, cost) = ImageDownsampler.image(from: data, maxPixel: 300) {
+            cache.set(image, forKey: id, cost: cost)
+            return image
+        }
+        // Last resort: a plain full decode (rare — only when ImageIO can't
+        // downsample at all). Still cost-tracked so the cache can evict it.
         guard let image = NSImage(data: data) else { return nil }
         cache.set(image, forKey: id, cost: image.approxDecodedBytes)
         return image

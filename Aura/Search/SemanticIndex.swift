@@ -11,14 +11,27 @@ actor SemanticIndex {
     private var vectors: [(itemId: String, vector: [Float])] = []
     private var loaded = false
 
+    /// Upper bound on vectors held in RAM. At 512 dims × 4 B ≈ 2 KB each, this
+    /// caps the index at ~40 MB instead of growing unbounded with the vault
+    /// (~100 MB at 50 k items, more beyond). The most-recent items stay
+    /// semantically searchable; older ones remain findable via FTS5 keyword
+    /// search, which `HybridSearch` already fuses in.
+    // TODO: swap to sqlite-vec (ANN) to make the whole vault semantic again
+    // without holding every vector in memory — the `embedding` table is already
+    // isolated for exactly this.
+    private static let maxVectors = 20_000
+
     init(dbPool: DatabasePool) {
         self.dbPool = dbPool
     }
 
-    /// Load (or fully reload) all stored vectors into memory.
+    /// Load (or fully reload) the most-recent vectors into memory (capped).
     func reload() async {
         let records: [EmbeddingRecord] = (try? await dbPool.read { db in
-            try EmbeddingRecord.fetchAll(db)
+            try EmbeddingRecord
+                .order(Column("updatedAt").desc)
+                .limit(Self.maxVectors)
+                .fetchAll(db)
         }) ?? []
         vectors = records.map { ($0.itemId, $0.floats) }
         loaded = true

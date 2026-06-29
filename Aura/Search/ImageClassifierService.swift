@@ -14,10 +14,14 @@ import os
 enum ImageClassifierService {
     private static let log = Logger(subsystem: "app.captureaura", category: "classify")
     private static let maxLabels = 12
+    /// Vision's scene/object classifier operates on a small normalized input, so
+    /// a 1024 px decode is ample — and avoids materializing a full-resolution
+    /// bitmap for every image during the launch backfill (see `OCRService`).
+    private static let maxPixel: CGFloat = 1024
 
     static func labels(for url: URL) -> String? {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
-              let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+              let cgImage = ThumbnailService.cgThumbnail(from: source, maxPixel: maxPixel) else { return nil }
 
         let request = VNClassifyImageRequest()
         let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
