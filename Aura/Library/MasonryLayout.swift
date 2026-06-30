@@ -32,6 +32,13 @@ struct MasonryLayout: Layout {
     var columnWidth: CGFloat
     var gap: CGFloat
 
+    /// Collapse guard for measurable cards: below this, a measured height is
+    /// assumed to be a not-yet-laid-out card (e.g. an NSTextView reporting its
+    /// 20pt minimum) rather than a real one. Kept well under the smallest real
+    /// card (one line of text + padding + meta footer ≈ 88pt) so it never inflates
+    /// an actual card and reopens the gap it's meant to close.
+    static let minMeasuredHeight: CGFloat = 64
+
     struct Cache {
         var placements: [CGRect] = []   // one frame per subview, in subview order
         var totalHeight: CGFloat = 0
@@ -86,16 +93,20 @@ struct MasonryLayout: Layout {
         for subview in subviews {
             let hint = subview[CardHeightHintKey.self]
             // Measurable cards (text/url/color) self-size — measure the WHOLE card
-            // (body + meta footer) and floor it with the estimate so a not-yet-
-            // laid-out NSTextView can't collapse to its 20pt minimum. Image/file
-            // can't be measured without reflowing on async thumbnail load, so they
-            // use the estimate (which already includes the meta footer) directly.
+            // (body + meta footer) and use that REAL height. We only floor it with a
+            // small constant (not the length-based `estimate`): the estimate is a
+            // conservative over-guess, so flooring with it reserved more space than a
+            // short note actually draws and left an uneven gap below it. The tiny
+            // floor still guards against a not-yet-laid-out NSTextView collapsing to
+            // its 20pt minimum. Image/file can't be measured without reflowing on
+            // async thumbnail load, so they use the estimate (which already includes
+            // the meta footer) directly.
             let height: CGFloat
             if hint.measuresHeight {
                 let measured = subview.sizeThatFits(
                     ProposedViewSize(width: columnWidth, height: nil)
                 ).height
-                height = max(measured, hint.estimate)
+                height = max(measured, Self.minMeasuredHeight)
             } else {
                 height = hint.estimate
             }
