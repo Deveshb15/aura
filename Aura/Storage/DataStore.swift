@@ -55,6 +55,8 @@ final class DataStore {
             await self?.backfillPending()
             await self?.backfillSearchIndex()
             await self?.backfillStaleEnrichment()
+            await self?.migrateKeywordTagsIfNeeded()
+            await self?.backfillKeywordTags()
         }
     }
 
@@ -461,6 +463,12 @@ final class DataStore {
         // pick this item up on a later launch.
         var enriched = item
         if let extracted, !extracted.isEmpty { enriched.extractedText = extracted }
+
+        // Topical keyword tags, so related-term searches resolve via FTS (see
+        // `updateKeywordTags`). Independent of the embedding below — derived from
+        // the same enriched corpus, written to its own `keywords` column.
+        await updateKeywordTags(itemID: itemID, item: enriched)
+
         guard let vector = await EmbeddingService.shared.embed(enriched.searchText) else { return }
 
         let record = EmbeddingRecord(itemId: itemID, vector: vector,
@@ -468,6 +476,20 @@ final class DataStore {
                                      sourceHash: Self.enrichVersion)
         try? await dbPool.write { db in try record.save(db) }
         await semanticIndex.upsert(itemId: itemID, vector: vector)
+    }
+
+    /// Derives topical tags for `item` (LLM on macOS 26+, word-embedding
+    /// fallback otherwise — see `KeywordTagger`) and writes them to the
+    /// `keywords` FTS column via a targeted UPDATE, so UI-driven full-row writes
+    /// never clobber it. Always writes (empty string when nothing is taggable)
+    /// so the backfill — which looks for `keywords IS NULL` — never retries the
+    /// same item forever.
+    func updateKeywordTags(itemID: String, item: Item) async {
+        let tags = await KeywordTagger.tagString(for: item)
+        try? await dbPool.write { db in
+            try db.execute(sql: "UPDATE item SET keywords = ? WHERE id = ?",
+                           arguments: [tags, itemID])
+        }
     }
 
     /// Type-specific text extraction. The synchronous, CPU-bound extractors are
@@ -589,6 +611,43 @@ final class DataStore {
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
         await semanticIndex.reload()
+    }
+
+    /// One-time pass that tags every still-untagged item so related-term search
+    /// works on the *existing* library — a note about a "trek" becomes findable
+    /// by "hike"/"travel". Unlike `backfillStaleEnrichment` (images/files only,
+    /// gated on the embedding version), this covers notes and links too, since
+    /// the keyword column is what those rely on; pending = `keywords IS NULL`.
+    /// Colours have no taggable text and are skipped. Capped + paced per launch
+    /// (LLM tagging is the heavy step on macOS 26), spreading a big vault over a
+    /// few launches. No `semanticIndex.reload()` — tags don't touch vectors.
+    private func backfillKeywordTags() async {
+        let pending: [Item] = (try? await dbPool.read { db in
+            try Item
+                .filter(sql: "keywords IS NULL AND type <> ?", arguments: [ItemType.color.rawValue])
+                .order(Column("createdAt").desc)
+                .limit(40)
+                .fetchAll(db)
+        }) ?? []
+        guard !pending.isEmpty else { return }
+        for item in pending {
+            await updateKeywordTags(itemID: item.id, item: item)
+            try? await Task.sleep(nanoseconds: 40_000_000)
+        }
+    }
+
+    /// When the tagger logic changes (`KeywordTagger.version`), clear every
+    /// item's tags so `backfillKeywordTags` regenerates them with the new logic.
+    /// Tracked in UserDefaults rather than a DB column — it's a derived-data
+    /// concern, mirroring how the embedding backfill keys off `sourceHash`.
+    private static let keywordTagVersionKey = "keywordTagVersion"
+    private func migrateKeywordTagsIfNeeded() async {
+        let defaults = UserDefaults.standard
+        guard defaults.string(forKey: Self.keywordTagVersionKey) != KeywordTagger.version else { return }
+        try? await dbPool.write { db in
+            try db.execute(sql: "UPDATE item SET keywords = NULL")
+        }
+        defaults.set(KeywordTagger.version, forKey: Self.keywordTagVersionKey)
     }
 
     /// Resolves a stored relative asset path (og image, favicon, …) to a URL.

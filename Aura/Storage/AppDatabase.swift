@@ -220,6 +220,49 @@ enum AppDatabase {
             try db.create(index: "item_on_reminderAt", on: "item", columns: ["reminderAt"])
         }
 
+        // Related-term search. Two cooperating changes, both needing an FTS
+        // rebuild, so they share one migration:
+        //
+        //  1. A new `keywords` column holding topical tags mined per item
+        //     (synonyms + broader categories — a trekking blog →
+        //     "hiking trekking outdoors travel adventure trail mountains").
+        //     This bridges the *semantic* gap: a search for "travel" or "hike"
+        //     finds the trek note via its tags. The column is intentionally NOT
+        //     mapped on the `Item` struct, so UI-driven full-row updates can't
+        //     clobber it; it's written only by the async tagger (see
+        //     `KeywordTagger` / `DataStore.updateKeywordTags`).
+        //
+        //  2. The `porter` stemming tokenizer (wrapping unicode61). This bridges
+        //     the *morphology* gap: "hike" and the tag "hiking" share no prefix
+        //     ("hike" vs "hik-ing"), so prefix matching alone misses it — but
+        //     both stem to "hike", so a stemmed index matches. Also a general
+        //     recall win (plurals / verb forms: "meeting"↔"meetings",
+        //     "running"↔"run") across every indexed column.
+        migrator.registerMigration("v5-keyword-tags") { db in
+            try db.alter(table: "item") { t in
+                t.add(column: "keywords", .text)
+            }
+
+            // Rebuild the FTS5 mirror with the porter tokenizer and the extra
+            // `keywords` column, reusing the v3 drop/recreate dance —
+            // `synchronize` repopulates from existing rows (re-tokenizing them
+            // with porter) and reinstalls the sync triggers.
+            try db.drop(table: "item_fts")
+            try db.dropFTS5SynchronizationTriggers(forTable: "item_fts")
+            try db.create(virtualTable: "item_fts", using: FTS5()) { t in
+                t.tokenizer = .porter()
+                t.synchronize(withTable: "item")
+                t.column("title")
+                t.column("textContent")
+                t.column("ogTitle")
+                t.column("ogDescription")
+                t.column("host")
+                t.column("fileName")
+                t.column("extractedText")
+                t.column("keywords")
+            }
+        }
+
         return migrator
     }
 }

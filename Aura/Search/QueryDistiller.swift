@@ -35,6 +35,12 @@ enum QueryDistiller {
         return try? FTS5Pattern(rawPattern: raw)
     }
 
+    /// Whether `word` (already lowercased) is a stopword. Used by synonym
+    /// expansion to drop filler neighbours.
+    static func isStopword(_ word: String) -> Bool {
+        stopwords.contains(word)
+    }
+
     private static func tokenize(_ query: String) -> [String] {
         query.lowercased()
             .split(whereSeparator: { !$0.isLetter && !$0.isNumber })

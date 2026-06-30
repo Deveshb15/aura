@@ -64,6 +64,16 @@ struct HybridSearch {
     /// AND-of-prefixes for precision and falls back to OR-of-prefixes for recall
     /// — so a long conversational query still matches on its few real terms
     /// instead of requiring every filler word ("someone/show/it/to/me").
+    ///
+    /// Related-term recall (a search for "hike" finding a note about a "trek") is
+    /// handled on the INDEX side: each item is enriched with topical keyword tags
+    /// (see `KeywordTagger` / the `keywords` FTS column), and the FTS table uses
+    /// the porter stemming tokenizer, so the query "hike" and the tag "hiking"
+    /// stem to the same token and match. Expanding the *query* instead was tried
+    /// and rejected — the bare word "hike" embeds nearest to the financial sense
+    /// (inflation / rate / price), so query-side synonyms both miss the trek note
+    /// and surface unrelated finance notes. Document terms are unambiguous, so
+    /// expansion is reliable only at index time.
     private func keywordIDs(_ query: String) async -> [String] {
         let terms = QueryDistiller.contentTerms(query)
         let patterns: [FTS5Pattern] = [
