@@ -3,6 +3,15 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>3.4.0</title>
+            <pubDate>Tue, 30 Jun 2026 12:16:34 +0100</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>32</sparkle:version>
+            <sparkle:shortVersionString>3.4.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.4.0/Carpet-3.4.0.dmg" length="18278436" type="application/octet-stream" sparkle:edSignature="Va8JLU8zdu4gAnVxTp0z9LiKhTgr9TwFVVHdwEMrQdE4m3h4ilJp1G83cnhjMcJe3xv+CMw0nxcn2gji9WfXBA=="/>
+        </item>
+        <item>
             <title>3.3.1</title>
             <pubDate>Mon, 29 Jun 2026 14:42:18 +0100</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -58,22 +67,6 @@
             <sparkle:shortVersionString>3.2.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.2.0/Carpet-3.2.0.dmg" length="18178005" type="application/octet-stream" sparkle:edSignature="tMfG+pSCiOjokGLEKAA35F/cqAOmJFHsBIU3JR/CkCRofGgRf3KXvNHtzqLTSrfmJwbBrzmfXTnSA5CTbt1FDg=="/>
-        </item>
-        <item>
-            <title>3.1.0</title>
-            <pubDate>Wed, 24 Jun 2026 00:35:40 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>27</sparkle:version>
-            <sparkle:shortVersionString>3.1.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <description><![CDATA[<h2>Search inside your documents</h2>
-<ul>
-  <li><b>Documents are now searchable by their contents.</b> Carpet reads the text out of PDFs, Word, RTF, plain text and code files, so a search matches what's <i>inside</i> a file, not just its name.</li>
-  <li><b>New Documents tab.</b> Saved files are sorted by kind — images join the photo grid, audio and video go to Music and Videos, and everything else lands in a dedicated Documents tab instead of Links.</li>
-  <li><b>Tidier notch.</b> The recents strip is centered with balanced spacing, and Open App now sits neatly on the right.</li>
-</ul>
-]]></description>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.1.0/Carpet-3.1.0.dmg" length="18177889" type="application/octet-stream" sparkle:edSignature="7ozp4VXlpeaVtSyyXhLC4bdtrLwwvNLpnh/PMUeZzh/WRJf9FcDg2vkmjsNhbqJfusY9DEUc/KDOA8+uEtb4Dg=="/>
         </item>
     </channel>
 </rss>
