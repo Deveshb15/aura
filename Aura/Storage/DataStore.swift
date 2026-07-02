@@ -53,6 +53,7 @@ final class DataStore {
             await self?.semanticIndex.reload()
             try? await Task.sleep(nanoseconds: 1_500_000_000)
             await self?.backfillPending()
+            await self?.backfillYouTubeChannels()
             await self?.backfillSearchIndex()
             await self?.backfillStaleEnrichment()
             await self?.migrateKeywordTagsIfNeeded()
@@ -393,6 +394,13 @@ final class DataStore {
             if let stored { updated.faviconPath = stored.relativePath }
         }
         if let description = meta.description { updated.ogDescription = description }
+        // Video hosts (YouTube) return a channel name but no page description.
+        // Fold it into ogDescription — an FTS-indexed, embedded, tagged field —
+        // so a video is findable by its channel, not just its title. Only when
+        // there's no real description to avoid clobbering it (Vimeo has both).
+        if updated.ogDescription == nil, let author = meta.author {
+            updated.ogDescription = author
+        }
         // Always set ogTitle (falling back to host) so this item is marked
         // enriched and the backfill won't keep re-fetching it.
         let resolvedTitle = meta.title ?? updated.host ?? url.host ?? url.absoluteString
@@ -556,6 +564,39 @@ final class DataStore {
             // Pace the loop so a large backlog spreads out instead of spiking.
             try? await Task.sleep(nanoseconds: 30_000_000)
         }
+    }
+
+    /// One-time backfill for YouTube items saved before the channel name was
+    /// captured. They already have `ogTitle` (so `backfillPending` skips them),
+    /// but no `ogDescription`, so a search by channel finds nothing. Fetch the
+    /// channel from oEmbed (cheap — one small JSON, no thumbnail) and write it
+    /// into `ogDescription`; the FTS sync trigger makes it keyword-searchable
+    /// immediately, and `enrichForSearch` refreshes the embedding + keyword tags
+    /// so semantic re-ranking and related-term search see it too. Capped + paced
+    /// like the other launch backfills.
+    private func backfillYouTubeChannels() async {
+        guard UserDefaults.standard.object(forKey: "linkPreviewsEnabled") as? Bool ?? true else { return }
+        let pending: [Item] = (try? await dbPool.read { db in
+            try Item
+                .filter(Column("urlSubtype") == URLSubtype.youtube.rawValue
+                        && (Column("ogDescription") == nil || Column("ogDescription") == ""))
+                .order(Column("createdAt").desc)
+                .limit(60)
+                .fetchAll(db)
+        }) ?? []
+        guard !pending.isEmpty else { return }
+        for item in pending {
+            guard let url = item.linkURL, let channel = await YouTube.channelName(for: url) else { continue }
+            let now = Date()
+            try? await dbPool.write { db in
+                try db.execute(sql: "UPDATE item SET ogDescription = ?, updatedAt = ? WHERE id = ?",
+                               arguments: [channel, now, item.id])
+            }
+            await enrichForSearch(itemID: item.id)
+            // Pace the loop so a large backlog spreads out instead of spiking.
+            try? await Task.sleep(nanoseconds: 40_000_000)
+        }
+        await semanticIndex.reload()
     }
 
     /// One-time index build for items captured before semantic search existed:

@@ -8,6 +8,10 @@ import ImageIO
 struct LinkMetadata {
     var title: String?
     var description: String?
+    /// Channel / uploader name for video hosts (YouTube, Vimeo). Folded into the
+    /// searchable text so a video is findable by its channel, not just its title.
+    /// Defaulted so the existing memberwise-init call sites need no change.
+    var author: String? = nil
     var imageData: Data?
     var iconData: Data?
 }
@@ -276,22 +280,38 @@ enum YouTube {
     static func metadata(for url: URL) async -> LinkMetadata? {
         guard let id = videoID(from: url) else { return nil }
 
-        var title: String?
-        var components = URLComponents(string: "https://www.youtube.com/oembed")!
-        components.queryItems = [.init(name: "url", value: url.absoluteString), .init(name: "format", value: "json")]
-        if let oembedURL = components.url,
-           let (data, _) = try? await URLSession.shared.data(from: oembedURL),
-           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            title = object["title"] as? String
-        }
+        let oembed = await oEmbed(for: url)
+        let title = oembed?["title"] as? String
+        let author = nonEmpty(oembed?["author_name"] as? String)
 
         for quality in ["maxresdefault", "sddefault", "hqdefault"] {
             if let thumbURL = URL(string: "https://img.youtube.com/vi/\(id)/\(quality).jpg"),
                let data = await LinkMetadataService.fetchImageData(from: thumbURL, minPixel: 200) {
-                return LinkMetadata(title: title, description: nil, imageData: data, iconData: nil)
+                return LinkMetadata(title: title, description: nil, author: author, imageData: data, iconData: nil)
             }
         }
-        return LinkMetadata(title: title, description: nil, imageData: nil, iconData: nil)
+        return LinkMetadata(title: title, description: nil, author: author, imageData: nil, iconData: nil)
+    }
+
+    /// Just the channel name for a YouTube URL (no thumbnail fetch). Used to
+    /// backfill items saved before the channel was captured.
+    static func channelName(for url: URL) async -> String? {
+        guard videoID(from: url) != nil else { return nil }
+        return nonEmpty(await oEmbed(for: url)?["author_name"] as? String)
+    }
+
+    /// Fetches the public oEmbed JSON (`title`, `author_name`, `author_url`, …).
+    private static func oEmbed(for url: URL) async -> [String: Any]? {
+        var components = URLComponents(string: "https://www.youtube.com/oembed")!
+        components.queryItems = [.init(name: "url", value: url.absoluteString), .init(name: "format", value: "json")]
+        guard let oembedURL = components.url,
+              let (data, _) = try? await URLSession.shared.data(from: oembedURL) else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+
+    private static func nonEmpty(_ string: String?) -> String? {
+        let trimmed = string?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (trimmed?.isEmpty ?? true) ? nil : trimmed
     }
 }
 
@@ -309,12 +329,13 @@ enum Vimeo {
 
         let title = (object["title"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let description = (object["description"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let author = (object["author_name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
         var imageData: Data?
         if let thumb = object["thumbnail_url"] as? String, let thumbURL = URL(string: thumb) {
             imageData = await LinkMetadataService.fetchImageData(from: thumbURL, minPixel: 100)
         }
 
         if title == nil, description == nil, imageData == nil { return nil }
-        return LinkMetadata(title: title, description: description, imageData: imageData, iconData: nil)
+        return LinkMetadata(title: title, description: description, author: author, imageData: imageData, iconData: nil)
     }
 }

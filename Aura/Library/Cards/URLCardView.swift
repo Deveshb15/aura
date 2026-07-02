@@ -57,7 +57,7 @@ struct URLCardView: View {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(.primary)
                     .lineLimit(2)
-                Text(item.host ?? "")
+                Text(subtitle)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -84,6 +84,16 @@ struct URLCardView: View {
     }
 
     // MARK: - Style
+
+    /// For videos, prefer the channel name (captured into `ogDescription`) over
+    /// the bare host — "Marques Brownlee" reads better than "www.youtube.com",
+    /// and it's the same text search now matches on. Falls back to the host.
+    private var subtitle: String {
+        if item.subtype.isVideo, let channel = item.ogDescription, !channel.isEmpty {
+            return channel
+        }
+        return item.host ?? ""
+    }
 
     private var heroHeight: CGFloat { item.subtype == .youtube ? 132 : 120 }
 
