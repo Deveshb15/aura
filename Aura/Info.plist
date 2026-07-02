@@ -48,9 +48,9 @@
 	<string>twVxJcgKa1TiNb9AlIj/hia3ts2AD98hfGyZF7H0qJ4=</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
-	<!-- Check every hour (3600s, Sparkle's minimum) so updates surface promptly. -->
+	<!-- Check once a week (604800s). -->
 	<key>SUScheduledCheckInterval</key>
-	<integer>3600</integer>
+	<integer>604800</integer>
 	<!-- Never install silently — always show the Install / Remind Me Later / Skip panel. -->
 	<key>SUAutomaticallyUpdate</key>
 	<false/>

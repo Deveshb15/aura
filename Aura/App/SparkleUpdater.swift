@@ -27,7 +27,7 @@ final class SparkleUpdater: ObservableObject {
 
         // Check shortly after launch so updates surface when you open the app —
         // silent unless an update is actually available (then the standard
-        // Install / Remind Me Later panel appears). Scheduled checks every 12h
+        // Install / Remind Me Later panel appears). Scheduled checks once a week
         // (SUScheduledCheckInterval) continue on top of this.
         let updater = controller.updater
         Task { @MainActor in
