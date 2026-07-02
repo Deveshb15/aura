@@ -3,6 +3,21 @@
     <channel>
         <title>Carpet</title>
         <item>
+            <title>3.4.1</title>
+            <pubDate>Thu, 02 Jul 2026 08:35:45 +0100</pubDate>
+            <link>https://github.com/Deveshb15/aura</link>
+            <sparkle:version>33</sparkle:version>
+            <sparkle:shortVersionString>3.4.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <description><![CDATA[<h2>Carpet 3.4.1</h2>
+<ul>
+  <li><strong>Improved:</strong> YouTube (and Vimeo) videos are now findable by <em>channel name</em> in search, not just the video title. The channel is captured on save, folded into the search index, and shown on the card. Existing saved videos are backfilled automatically over your next few launches.</li>
+  <li><strong>Changed:</strong> Carpet now checks for updates about once a week instead of hourly.</li>
+</ul>
+]]></description>
+            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.4.1/Carpet-3.4.1.dmg" length="18304619" type="application/octet-stream" sparkle:edSignature="7bCrLc+HIc9BotjcloDAcijNeuP08EPkFAmDap9CCvsJ1wKoMxloV617CLjaqXVC2XuQspbF5GUjTo0PQTRpAw=="/>
+        </item>
+        <item>
             <title>3.4.0</title>
             <pubDate>Tue, 30 Jun 2026 12:16:34 +0100</pubDate>
             <link>https://github.com/Deveshb15/aura</link>
@@ -58,15 +73,6 @@
 </ul>
 ]]></description>
             <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.2.1/Carpet-3.2.1.dmg" length="18177791" type="application/octet-stream" sparkle:edSignature="vOuoe/qbc6qHzqoBG7Kfy48cCS6r/RQltXVL/WizSmf1sVYwYbg75oS+uafqrrUuLtVxreEmGAOOAt4h7exFAg=="/>
-        </item>
-        <item>
-            <title>3.2.0</title>
-            <pubDate>Thu, 25 Jun 2026 01:12:40 +0530</pubDate>
-            <link>https://github.com/Deveshb15/aura</link>
-            <sparkle:version>28</sparkle:version>
-            <sparkle:shortVersionString>3.2.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/Deveshb15/aura/releases/download/v3.2.0/Carpet-3.2.0.dmg" length="18178005" type="application/octet-stream" sparkle:edSignature="tMfG+pSCiOjokGLEKAA35F/cqAOmJFHsBIU3JR/CkCRofGgRf3KXvNHtzqLTSrfmJwbBrzmfXTnSA5CTbt1FDg=="/>
         </item>
     </channel>
 </rss>
